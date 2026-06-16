@@ -131,17 +131,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.rust-targets }}
-      - name: Cache Cargo.lock
-        if: ${{ github.event.inputs.os_target == 'all' || matrix.group_name == github.event.inputs.os_target }}
-        id: cargo-lock-cache
-        uses: actions/cache@v4
-        with:
-          path: src-tauri/Cargo.lock
-          key: cargo-lock-${{ matrix.cache-key }}-${{ hashFiles('src-tauri/Cargo.toml') }}
-      - name: Generate Cargo.lock
-        if: ${{ steps.cargo-lock-cache.outputs.cache-hit != 'true' && (github.event.inputs.os_target == 'all' || matrix.group_name == github.event.inputs.os_target) }}
-        run: cargo generate-lockfile
-        working-directory: src-tauri
       - name: Rust cache
         if: ${{ github.event.inputs.os_target == 'all' || matrix.group_name == github.event.inputs.os_target }}
         uses: swatinem/rust-cache@v2

@@ -100,14 +100,13 @@ pub fn migrate_legacy_data() {
                         if !path.is_file() {
                             continue;
                         }
-                        // Only user-uploaded favicons ("custom_*") are irreplaceable; downloaded
-                        // covers ("cover_<hash>.png") are re-fetched on demand, no need to migrate.
+                        // Copy every cached image, not just "custom_*": downloaded covers
+                        // ("cover_<hash>.png") are also referenced by file:// paths persisted in
+                        // custom_stations.json, so skipping them breaks every station's favicon.
                         if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                            if name.starts_with("custom_") {
-                                let dest = new_cache.join(name);
-                                if !dest.exists() {
-                                    let _ = std::fs::copy(&path, &dest);
-                                }
+                            let dest = new_cache.join(name);
+                            if !dest.exists() {
+                                let _ = std::fs::copy(&path, &dest);
                             }
                         }
                     }
