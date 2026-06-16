@@ -103,7 +103,7 @@
         "selectCountry": "Land auswählen",
         "selectLanguage": "Sprache auswählen (optional)",
         "searchCountry": "Land suchen...",
-        "setupTitle": "Radiko Einrichtung",
+        "setupTitle": "Radiocove Einrichtung",
         "errorLoadingCountries": "Fehler beim Laden der Länder: ",
         "downloadingImages_failed": "Bilder konnten nicht heruntergeladen werden, es wird fortgefahren...",
         "imagesDownloaded": "{{count}}/{{total}} Bilder heruntergeladen.",
@@ -112,7 +112,7 @@
         "change": "Ändern",
         "startWithCountry": "Mit {{country}} starten",
         "startWithCountryAndLang": "Mit {{country}} / {{lang}} starten",
-        "languageWelcomeTitle": "Willkommen bei Radiko",
+        "languageWelcomeTitle": "Willkommen bei Radiocove",
         "languageWelcomeSubtitle": "Bitte wähle deine bevorzugte Sprache, um fortzufahren."
     },
     "settings": {
@@ -413,7 +413,7 @@
         "nextStation": "Nächster Sender"
     },
     "tray": {
-        "radikoDesktop": "Radiko Desktop",
+        "radiocoveDesktop": "Radiocove Desktop",
         "stopped": "Gestoppt",
         "playing": "Aktuelle Wiedergabe",
         "paused": "Pausiert",

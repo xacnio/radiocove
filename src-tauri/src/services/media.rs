@@ -26,8 +26,8 @@ impl MediaSession {
     #[allow(unused_variables)]
     pub fn new(hwnd: *mut std::ffi::c_void, app_handle: AppHandle) -> Option<Self> {
         let config = PlatformConfig {
-            dbus_name: "radiko_desktop",
-            display_name: "Radiko Desktop",
+            dbus_name: "radiocove_desktop",
+            display_name: "Radiocove",
             hwnd: Some(hwnd),
         };
 

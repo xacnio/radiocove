@@ -579,7 +579,7 @@ async fn run_icy_stream(config: &StreamConfig) -> Result<(), String> {
     let response = client
         .get(&config.url)
         .header("Icy-MetaData", "1")
-        .header("User-Agent", "Radiko/1.0")
+        .header("User-Agent", "Radiocove/1.0")
         .send()
         .await
         .map_err(|e| format!("Connection failed: {}", e))?;

@@ -20,10 +20,17 @@ pub fn run() {
         .with_target(false)
         .init();
 
-    tracing::info!("Radiko starting");
+    tracing::info!("Radiocove starting");
 
     // 1. PENDING RESET CHECK
     setup::check_pending_reset();
+
+    // 1b. LEGACY "RADIKO DESKTOP" DATA MIGRATION (one-time, runs before Settings::load)
+    setup::migrate_legacy_data();
+
+    // 1c. LEGACY "RADIKO DESKTOP" INSTALL CLEANUP (Windows only, non-blocking)
+    #[cfg(target_os = "windows")]
+    std::thread::spawn(setup::cleanup_legacy_windows_install);
 
     // 2. NATIVE SPLASH SCREEN (WINDOWS)
     let splash_handle = platform::splash::SplashScreen::show();
@@ -236,5 +243,5 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .run(tauri::generate_context!())
-        .expect("error while running Radiko");
+        .expect("error while running Radiocove application");
 }

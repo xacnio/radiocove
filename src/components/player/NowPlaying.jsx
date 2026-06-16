@@ -385,7 +385,7 @@ export default function NowPlaying({
                                                 <img src={toAssetUrl(prevMiniVisual)} alt="" className="w-full h-full object-cover" />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center opacity-80">
-                                                    <img src="/icon.svg" className="w-[50%] h-[50%] opacity-20 grayscale" alt="Radiko" />
+                                                    <img src="/icon.svg" className="w-[50%] h-[50%] opacity-20 grayscale" alt="Radiocove" />
                                                 </div>
                                             )}
                                         </div>
@@ -410,7 +410,7 @@ export default function NowPlaying({
                                             key={station.stationuuid || station.url + "_initials"}
                                             className={`w-full h-full flex items-center justify-center opacity-80 relative z-20 ${favLoaded ? 'animate-logo-fade-in' : 'opacity-0'}`}
                                         >
-                                            <img src="/icon.svg" className="w-[50%] h-[50%] opacity-20 grayscale" alt="Radiko" />
+                                            <img src="/icon.svg" className="w-[50%] h-[50%] opacity-20 grayscale" alt="Radiocove" />
                                         </div>
                                     )}
                                 </div>
@@ -667,7 +667,7 @@ export default function NowPlaying({
                                                         key={station.stationuuid || station.url + "_initials_dikey"}
                                                         className={`w-full h-full bg-bg-surface-active flex items-center justify-center opacity-80 rounded-full relative z-20 ${favLoaded ? 'animate-logo-fade-in' : 'opacity-0'}`}
                                                     >
-                                                        <img src="/icon.svg" className="w-[50%] h-[50%] opacity-20 grayscale" alt="Radiko" />
+                                                        <img src="/icon.svg" className="w-[50%] h-[50%] opacity-20 grayscale" alt="Radiocove" />
                                                     </div>
                                                 )}
                                             </div>
@@ -708,7 +708,7 @@ export default function NowPlaying({
                                                         <img src={toAssetUrl(songCover)} alt="" className="w-full h-full object-cover" onError={() => setCoverError(true)} />
                                                     ) : (
                                                         <div className="w-full h-full bg-bg-surface-active flex items-center justify-center opacity-80">
-                                                            <img src="/icon.svg" className="w-[50%] h-[50%] opacity-20 grayscale" alt="Radiko" />
+                                                            <img src="/icon.svg" className="w-[50%] h-[50%] opacity-20 grayscale" alt="Radiocove" />
                                                         </div>
                                                     )}
 

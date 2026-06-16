@@ -334,7 +334,7 @@ mod win32 {
             let mut lang_code = String::new();
             if let Ok(app_data) = std::env::var("APPDATA") {
                 let settings_path = std::path::Path::new(&app_data)
-                    .join("dev.xacnio.radikodesktop")
+                    .join("dev.xacnio.radiocove")
                     .join("settings.json");
                 if let Ok(content) = std::fs::read_to_string(settings_path) {
                     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -517,7 +517,7 @@ mod win32 {
         let fnt = CreateFontW(-splash_px(18), 0, 0, 0, 700, 0, 0, 0, 1, 0, 0, 5, 0, face.as_ptr());
         let old_fnt = SelectObject(hdc, fnt);
         SetTextColor(hdc, rgb(240, 240, 240));
-        let title = wide("Radiko Desktop");
+        let title = wide("Radiocove");
         let mut tr = RECT {
             left: 0,
             top: splash_px(70),
@@ -618,7 +618,7 @@ mod win32 {
                 // Warm up loading text (reads from locale JSONs)
                 let _ = get_loading_text();
 
-                let cls = wide("RadikoSplash");
+                let cls = wide("RadiocoveSplash");
                 let arrow = LoadCursorW(0, IDC_ARROW);
                 let wc = WNDCLASSEXW {
                     cb_size: std::mem::size_of::<WNDCLASSEXW>() as u32,

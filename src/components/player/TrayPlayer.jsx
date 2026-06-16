@@ -7,13 +7,13 @@ import { toAssetUrl } from '../../utils';
 
 export default function TrayPlayer() {
     const [status, setStatus] = useState('stopped');
-    const [stationName, setStationName] = useState('Radiko Desktop');
+    const [stationName, setStationName] = useState('Radiocove');
     const [stationImage, setStationImage] = useState(null);
     const [title, setTitle] = useState('');
     const [cover, setCover] = useState(null);
 
     const win = getCurrentWindow();
-    const stationNameRef = useRef('Radiko Desktop');
+    const stationNameRef = useRef('Radiocove');
     const focusRef = useRef(null);
 
     const [volume, setVolume] = useState(1);
@@ -26,7 +26,7 @@ export default function TrayPlayer() {
             if (res) {
                 setStatus(res.status);
 
-                const newStation = res.station_name || 'Radiko Desktop';
+                const newStation = res.station_name || 'Radiocove';
                 setStationName(newStation);
                 setStationImage(res.station_image || null);
                 setTitle(res.metadata?.title || '');
@@ -194,7 +194,7 @@ export default function TrayPlayer() {
 
     const displayCover = toAssetUrl(cover) || toAssetUrl(stationImage) || '/icon.svg';
     const displayTitle = title || stationName || 'No station playing';
-    const displayArtist = title ? stationName : 'Radiko Desktop';
+    const displayArtist = title ? stationName : 'Radiocove';
 
     const btnStyle = {
         background: 'transparent',

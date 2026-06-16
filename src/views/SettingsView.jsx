@@ -135,7 +135,7 @@ export default function SettingsView({
         if (updateResult.body) setReleaseNotes(updateResult.body);
 
         // Fetch fresh metadata from GitHub in the background
-        fetch(`https://api.github.com/repos/xacnio/radiko-desktop/releases/tags/v${updateResult.version}`)
+        fetch(`https://api.github.com/repos/xacnio/radiocove/releases/tags/v${updateResult.version}`)
             .then(res => res.json())
             .then(data => {
                 if (data && data.body) {
@@ -148,7 +148,7 @@ export default function SettingsView({
     useEffect(() => {
         if (isHistoryOpen && !releaseHistory && !isLoadingHistory) {
             setIsLoadingHistory(true);
-            fetch('https://api.github.com/repos/xacnio/radiko-desktop/releases')
+            fetch('https://api.github.com/repos/xacnio/radiocove/releases')
                 .then(res => res.json())
                 .then(data => {
                     if (Array.isArray(data)) {
@@ -827,11 +827,11 @@ export default function SettingsView({
                             <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-transparent via-accent to-transparent opacity-50" />
 
                             <div className="w-24 h-24 bg-accent rounded-[2.2rem] mx-auto flex items-center justify-center text-bg-primary shadow-2xl shadow-accent/40 mb-6 transform rotate-6 group-hover:rotate-0 transition-all duration-500 overflow-hidden border-4 border-accent">
-                                <img src="/icon.svg" alt="Radiko Logo" className="w-full h-full object-cover p-3" />
+                                <img src="/icon.svg" alt="Radiocove Logo" className="w-full h-full object-cover p-3" />
                             </div>
 
                             <div className="space-y-1">
-                                <h4 className="text-2xl font-black text-text-primary tracking-tighter">RADIKO Desktop</h4>
+                                <h4 className="text-2xl font-black text-text-primary tracking-tighter">RADICOVE</h4>
                                 <div className="flex items-center justify-center gap-2 text-[10px] text-accent font-bold uppercase tracking-[0.2em] opacity-80">
                                     <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                                     Stable v{appVersion}
@@ -840,7 +840,7 @@ export default function SettingsView({
 
                             <div className="flex justify-center gap-3 mt-8">
                                 <button
-                                    onClick={() => invoke('open_browser_url', { url: 'https://github.com/xacnio/radiko-desktop' })}
+                                    onClick={() => invoke('open_browser_url', { url: 'https://github.com/xacnio/radiocove' })}
                                     className="px-5 py-2.5 rounded-xl bg-bg-surface/50 hover:bg-bg-surface-hover transition-all text-text-primary border border-border/30 flex items-center gap-2 font-bold text-xs group"
                                 >
                                     <Github size={16} /> GitHub <ExternalLink size={12} className="opacity-40 group-hover:opacity-100 transition-opacity" />

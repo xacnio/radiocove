@@ -98,7 +98,7 @@ impl DiscordRpc {
 
             let state_text = station_name.to_string();
             let version = env!("CARGO_PKG_VERSION");
-            let small_text = format!("Radiko Desktop v{}", version);
+            let small_text = format!("Radiocove v{}", version);
 
             // Build activity JSON manually to include buttons
             let mut activity_json = serde_json::json!({
@@ -111,7 +111,7 @@ impl DiscordRpc {
                 "buttons": [
                     {
                         "label": "View on GitHub",
-                        "url": "https://github.com/xacnio/radiko-desktop"
+                        "url": "https://github.com/xacnio/radiocove"
                     }
                 ]
             });
@@ -123,14 +123,14 @@ impl DiscordRpc {
                 activity_json["assets"] = serde_json::json!({
                     "large_image": cover_url,
                     "large_text": large_text,
-                    "small_image": "https://raw.githubusercontent.com/xacnio/radiko-desktop/refs/heads/master/src-tauri/icons/icon.png",
+                    "small_image": "https://raw.githubusercontent.com/xacnio/radiocove/refs/heads/master/src-tauri/icons/icon.png",
                     "small_text": small_text
                 });
             } else {
                 info!("Discord RPC: No enriched cover, using default logo");
                 activity_json["assets"] = serde_json::json!({
-                    "large_image": "radiko_logo",
-                    "large_text": "Radiko Desktop"
+                    "large_image": "radiocove_logo",
+                    "large_text": "Radiocove"
                 });
             }
 

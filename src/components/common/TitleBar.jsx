@@ -46,8 +46,8 @@ export default function TitleBar({ onOpenSettings }) {
                     </div>
 
                     <div className="flex-1 flex justify-center items-center gap-2 pointer-events-none" data-tauri-drag-region>
-                        <img src="/icon.svg" alt="Radiko" className="w-4 h-4 pointer-events-none" data-tauri-drag-region />
-                        <span className="text-[11px] font-bold text-text-muted uppercase tracking-widest opacity-80" data-tauri-drag-region>Radiko Desktop</span>
+                        <img src="/icon.svg" alt="Radiocove" className="w-4 h-4 pointer-events-none" data-tauri-drag-region />
+                        <span className="text-[11px] font-bold text-text-muted uppercase tracking-widest opacity-80" data-tauri-drag-region>Radiocove</span>
                     </div>
 
                     <div className="flex items-center justify-end w-20">
@@ -57,8 +57,8 @@ export default function TitleBar({ onOpenSettings }) {
                 <>
                     {/* Windows/Linux Layout: Controls Right */}
                     <div className="flex items-center gap-2" data-tauri-drag-region>
-                        <img src="/icon.svg" alt="Radiko" className="w-4 h-4 ml-2 pointer-events-none" data-tauri-drag-region />
-                        <span className="text-[11px] font-bold text-text-muted uppercase tracking-widest opacity-80" data-tauri-drag-region>Radiko Desktop</span>
+                        <img src="/icon.svg" alt="Radiocove" className="w-4 h-4 ml-2 pointer-events-none" data-tauri-drag-region />
+                        <span className="text-[11px] font-bold text-text-muted uppercase tracking-widest opacity-80" data-tauri-drag-region>Radiocove</span>
                     </div>
 
                     <div className="flex items-center justify-end">

@@ -469,7 +469,7 @@ fn get_tooltip(key: &str, fallback: &str) -> String {
     let mut lang_code = String::new();
     if let Ok(appdata) = std::env::var("APPDATA") {
         let path = std::path::PathBuf::from(appdata)
-            .join("dev.xacnio.radikodesktop")
+            .join("dev.xacnio.radiocove")
             .join("settings.json");
         if let Ok(content) = std::fs::read_to_string(path) {
             if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {

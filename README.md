@@ -1,23 +1,23 @@
 <div align="center">
-  <img src="public/icon.svg" alt="Radiko" width="100" height="100">
-  <h1>Radiko</h1>
+  <img src="public/icon.svg" alt="Radiocove" width="100" height="100">
+  <h1>Radiocove</h1>
   <p>Desktop radio client built with Tauri 2 + React</p>
 
   [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-  [![Version](https://img.shields.io/badge/version-1.0.9-blue)](https://github.com/xacnio/radiko-desktop/releases)
+  [![Version](https://img.shields.io/badge/version-1.2.0-blue)](https://github.com/xacnio/radiocove/releases)
 </div>
 
 ---
 
-Radiko is a desktop radio player. You can browse stations, add your own streams, identify songs with built-in recognition, and customize pretty much everything. It's fast, looks good, and stays out of your way.
+Radiocove is a desktop radio player. You can browse stations, add your own streams, identify songs with built-in recognition, and customize pretty much everything. It's fast, looks good, and stays out of your way.
 
 > [!IMPORTANT]
-> Radiko doesn't host or broadcast anything. It's just a player. You add the streams, we play them.
+> Radiocove doesn't host or broadcast anything. It's just a player. You add the streams, we play them.
 
 ## Screenshots
 
 <div align="center">
-  <img src="docs/showcase/hero_presentation.png" alt="Radiko Desktop Hero" width="100%" style="border-radius: 12px; margin-bottom: 20px;" />
+  <img src="docs/showcase/hero_presentation.png" alt="Radiocove Hero" width="100%" style="border-radius: 12px; margin-bottom: 20px;" />
 </div>
 
 <details>
@@ -73,7 +73,7 @@ Radiko is a desktop radio player. You can browse stations, add your own streams,
 
 ## Install
 
-Grab the latest build from [Releases](https://github.com/xacnio/radiko-desktop/releases):
+Grab the latest build from [Releases](https://github.com/xacnio/radiocove/releases):
 
 | Platform | Architecture | Formats |
 | :--- | :--- | :--- |
@@ -88,8 +88,8 @@ Windows 7/8 is not supported (no WebView2).
 ## Build from source
 
 ```bash
-git clone https://github.com/xacnio/radiko-desktop
-cd radiko-desktop
+git clone https://github.com/xacnio/radiocove
+cd radiocove
 npm install
 npm run tauri dev
 ```
@@ -98,9 +98,9 @@ Requires [Rust](https://rustup.rs/), [Node.js](https://nodejs.org/), and platfor
 
 ## Disclaimer
 
-Radiko is a client application. It does not provide, curate, or host any radio content. Users are responsible for the streams they add. Station discovery is powered by [radio-browser.info](https://www.radio-browser.info), a community-driven database — we're not affiliated with them.
+Radiocove is a client application. It does not provide, curate, or host any radio content. Users are responsible for the streams they add. Station discovery is powered by [radio-browser.info](https://www.radio-browser.info), a community-driven database — we're not affiliated with them.
 
-This app uses third-party services for certain features: Shazam (song recognition), Apple Music / iTunes (metadata enrichment), and Google (image search). Radiko is not affiliated with or endorsed by any of these services. Their use is subject to their respective terms of service.
+This app uses third-party services for certain features: Shazam (song recognition), Apple Music / iTunes (metadata enrichment), and Google (image search). Radiocove is not affiliated with or endorsed by any of these services. Their use is subject to their respective terms of service.
 
 Users can share station lists via backup files. We take no responsibility for shared content.
 
@@ -123,3 +123,7 @@ Going forward, the project's maintenance, stability improvements, and new featur
 ## License
 
 [GPL-3.0](LICENSE)
+
+## Privacy Policy
+
+[Privacy Policy](PRIVACY.md)

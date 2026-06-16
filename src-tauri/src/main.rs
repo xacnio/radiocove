@@ -14,5 +14,5 @@ fn main() {
         let _ = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     }
 
-    radiko_lib::run();
+    radiocove_lib::run();
 }

@@ -103,7 +103,7 @@
         "selectCountry": "Ülke seçin",
         "selectLanguage": "Dil seçin (opsiyonel)",
         "searchCountry": "Ülke ara...",
-        "setupTitle": "Radiko Kurulum",
+        "setupTitle": "Radiocove Kurulum",
         "errorLoadingCountries": "Ülkeler yüklenirken hata: ",
         "downloadingImages_failed": "Resimler indirilemedi, devam ediliyor...",
         "imagesDownloaded": "{{count}}/{{total}} resim indirildi.",
@@ -112,7 +112,7 @@
         "change": "Değiştir",
         "startWithCountry": "{{country}} ile başla",
         "startWithCountryAndLang": "{{country}} / {{lang}} ile başla",
-        "languageWelcomeTitle": "Radiko'ya Hoş Geldin",
+        "languageWelcomeTitle": "Radiocove'ya Hoş Geldin",
         "languageWelcomeSubtitle": "Devam etmek için lütfen tercih ettiğiniz dili seçin."
     },
     "settings": {
@@ -413,7 +413,7 @@
         "nextStation": "Sonraki radyo"
     },
     "tray": {
-        "radikoDesktop": "Radiko Desktop",
+        "radiocoveDesktop": "Radiocove Desktop",
         "stopped": "Durduruldu",
         "playing": "Şu An Çalıyor",
         "paused": "Duraklatıldı",

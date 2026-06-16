@@ -194,7 +194,7 @@ pub async fn export_backup(options: BackupOptions, app: AppHandle) -> Result<(),
     let save_path = rfd::AsyncFileDialog::new()
         .set_title("Save Backup")
         .add_filter("Zip", &["zip"])
-        .set_file_name("radiko_backup.zip")
+        .set_file_name("radiocove_backup.zip")
         .save_file()
         .await;
 

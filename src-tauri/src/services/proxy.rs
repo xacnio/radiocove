@@ -133,7 +133,7 @@ pub fn start_proxy(app: AppHandle) -> ProxyState {
                     }
                 } else {
                     let _ = request.respond(
-                        Response::from_string("Radiko Proxy Active").with_status_code(200),
+                        Response::from_string("Radiocove Proxy Active").with_status_code(200),
                     );
                 }
             });

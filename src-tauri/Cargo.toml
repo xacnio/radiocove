@@ -1,6 +1,6 @@
 [package]
-name = "radiko-desktop"
-version = "1.1.0"
+name = "radiocove"
+version = "1.2.0"
 edition = "2021"
 description = "Desktop radio streaming application"
 license = "GPL-3.0-only"
@@ -9,7 +9,7 @@ license = "GPL-3.0-only"
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(cargo_clippy)'] }
 
 [lib]
-name = "radiko_lib"
+name = "radiocove_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

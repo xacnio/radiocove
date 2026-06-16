@@ -32,7 +32,7 @@ fn get_observer_class() -> &'static Class {
     static REGISTER: Once = Once::new();
     REGISTER.call_once(|| {
         let superclass = class!(NSObject);
-        let mut decl = ClassDecl::new("RadikoMiniaturizeObserver", superclass).unwrap();
+        let mut decl = ClassDecl::new("RadiocoveiniaturizeObserver", superclass).unwrap();
         unsafe {
             decl.add_ivar::<usize>("appHandlePtr");
             decl.add_method(
@@ -42,7 +42,7 @@ fn get_observer_class() -> &'static Class {
         }
         decl.register();
     });
-    class!(RadikoMiniaturizeObserver)
+    class!(RadiocoveMiniaturizeObserver)
 }
 
 unsafe fn ns_string(s: &str) -> *mut Object {

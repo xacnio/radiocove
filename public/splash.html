@@ -116,7 +116,7 @@
 
 <body>
     <img class="icon" src="/icon.svg" alt="" />
-    <div class="title">Radiko Desktop</div>
+    <div class="title">Radiocove</div>
     <div class="subtitle" id="loading-text">Loading</div>
     <div class="bar-track">
         <div class="bar-fill"></div>
@@ -125,7 +125,7 @@
         (function () {
             try {
                 // Theme detection
-                var uiState = localStorage.getItem('radiko-ui');
+                var uiState = localStorage.getItem('radiocove-ui');
                 var theme = 'system';
                 if (uiState) {
                     try { theme = JSON.parse(uiState).theme || 'system'; } catch (e) { }

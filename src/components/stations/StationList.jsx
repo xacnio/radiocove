@@ -139,7 +139,7 @@ const StationItem = memo(function StationItem({ station, isActive, isFav, onPlay
                     />
                 ) : (
                     <div className="w-11 h-11 rounded-lg bg-bg-surface-active flex items-center justify-center shrink-0 border border-border/50 opacity-80">
-                        <img src="/icon.svg" className="w-[50%] h-[50%] opacity-50 grayscale" alt="Radiko" />
+                        <img src="/icon.svg" className="w-[50%] h-[50%] opacity-50 grayscale" alt="Radiocove" />
                     </div>
                 )}
 
@@ -585,7 +585,7 @@ export default memo(function StationList({
 
     const [viewSettings, setViewSettings] = useState(() => {
         try {
-            const saved = localStorage.getItem('radiko_stationList_viewSettings');
+            const saved = localStorage.getItem('radiocove_stationList_viewSettings');
             return saved ? JSON.parse(saved) : { hideLocation: false, hideLanguage: false, hideTags: false, isGrid: false };
         } catch {
             return { hideLocation: false, hideLanguage: false, hideTags: false, isGrid: false };
@@ -595,7 +595,7 @@ export default memo(function StationList({
     const canSort = (tab === 'favorites' || tab === 'all') && sortBy === 'manual';
 
     useEffect(() => {
-        localStorage.setItem('radiko_stationList_viewSettings', JSON.stringify(viewSettings));
+        localStorage.setItem('radiocove_stationList_viewSettings', JSON.stringify(viewSettings));
     }, [viewSettings]);
 
     const sortRef = useRef(null);

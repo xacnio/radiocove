@@ -28,7 +28,7 @@ pub fn emit_status(app: &AppHandle, status: PlaybackStatus) {
                 // Set metadata immediately so OS player sees the station name
                 if let Some(state) = app.try_state::<crate::state::AppState>() {
                     if let Ok(ps) = state.inner.lock() {
-                        let artist = ps.station_name.as_deref().unwrap_or("Radiko");
+                        let artist = ps.station_name.as_deref().unwrap_or("Radiocove");
                         let title_opt = ps.stream_metadata.as_ref().and_then(|m| m.title.clone());
                         let title = title_opt.as_deref().unwrap_or(artist);
                         let cover = ps
@@ -64,7 +64,7 @@ pub fn emit_status(app: &AppHandle, status: PlaybackStatus) {
                 // SET METADATA IMMEDIATELY so the radio switch is instant in the OS panel
                 if let Some(state) = app.try_state::<crate::state::AppState>() {
                     if let Ok(ps) = state.inner.lock() {
-                        let artist = ps.station_name.as_deref().unwrap_or("Radiko");
+                        let artist = ps.station_name.as_deref().unwrap_or("Radiocove");
                         let cover = ps.station_image.as_deref().or(ps.default_cover.as_deref());
                         ms.set_metadata(artist, artist, cover);
                     }
@@ -111,7 +111,7 @@ pub fn emit_metadata(app: &AppHandle, metadata: StreamMetadata) {
 
     // Update OS media transport with raw metadata
     if let Some(ms) = app.try_state::<MediaSession>() {
-        let mut station_name = "Radiko".to_string();
+        let mut station_name = "Radiocove".to_string();
         let mut cover_url = None;
         
         if let Some(state) = app.try_state::<crate::state::AppState>() {

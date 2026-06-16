@@ -440,7 +440,7 @@ pub async fn open_radio_browser(app: tauri::AppHandle) -> Result<(), AppError> {
     // 1. Create the base native Window (no decorations, no default webview)
     #[cfg(not(target_os = "macos"))]
     let win_builder = WindowBuilder::new(&app, "radio-browser-window")
-        .title("Radiko Browser")
+        .title("Radiocove Browser")
         .inner_size(1200.0, 700.0)
         .decorations(false)
         .resizable(true)
@@ -449,7 +449,7 @@ pub async fn open_radio_browser(app: tauri::AppHandle) -> Result<(), AppError> {
 
     #[cfg(target_os = "macos")]
     let mut win_builder = WindowBuilder::new(&app, "radio-browser-window")
-        .title("Radiko Browser")
+        .title("Radiocove Browser")
         .inner_size(1200.0, 700.0)
         .decorations(false)
         .resizable(true)
@@ -615,7 +615,7 @@ pub async fn open_radio_browser(app: tauri::AppHandle) -> Result<(), AppError> {
         (function() {
             const I = window.__TAURI_INTERNALS__;
             if (!I) return;
-            console.log("%c[Radiko] Scanner Active", "color: #6c63ff; font-weight: bold;");
+            console.log("%c[Radiocove] Scanner Active", "color: #6c63ff; font-weight: bold;");
 
             const MEDIA_REGEX = /\.(m3u8|m3u|mp3|aac|aacp|accp|pls|ts|flac|ogg|wav|m4a)(\?|#|$)/i;
 
@@ -642,7 +642,7 @@ pub async fn open_radio_browser(app: tauri::AppHandle) -> Result<(), AppError> {
                 window._rx_seen = window._rx_seen || {};
                 window._rx_seen[url] = true;
 
-                console.log("%c[Radiko Signature Candidate] " + src + " -> " + url, "color: #10b981; font-weight: bold;");
+                console.log("%c[Radiocove Signature Candidate] " + src + " -> " + url, "color: #10b981; font-weight: bold;");
                 
                 const title = document.title || 'Detected Stream';
                 const favEl = document.querySelector('link[rel*="icon"]');
@@ -747,7 +747,7 @@ pub async fn open_radio_browser(app: tauri::AppHandle) -> Result<(), AppError> {
                     let _ = tb.eval("if(window.setLoading) window.setLoading(true);");
                 }
                 let _ = app_handle.emit("browser-loading-started", ());
-                if url.scheme() == "radiko" {
+                if url.scheme() == "radiocove" {
                     let pairs: std::collections::HashMap<String, String> =
                         url.query_pairs().into_owned().collect();
                     let stream_url = pairs.get("url").cloned().unwrap_or_default();

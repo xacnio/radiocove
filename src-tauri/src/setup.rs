@@ -1,26 +1,19 @@
+use std::path::PathBuf;
 use tauri::{App, Manager};
 
 use crate::platform;
 use crate::services::media::MediaSession;
 use crate::state::AppState;
 
+/// Old app identifier, used to find/migrate data from the "Radiko Desktop" -> "Radiocove" rename.
+const LEGACY_IDENTIFIER: &str = "dev.xacnio.radikodesktop";
+const LEGACY_DISPLAY_NAME: &str = "Radiko Desktop";
+/// Must match `identifier` in tauri.conf.json.
+const CURRENT_IDENTIFIER: &str = "dev.xacnio.radiocove";
+
 /// Checks for the '.pending_reset' flag and cleans up WebView/cache directories if found.
 pub fn check_pending_reset() {
-    let app_data = if cfg!(target_os = "windows") {
-        std::env::var("APPDATA")
-            .ok()
-            .map(|d| std::path::PathBuf::from(d).join("dev.xacnio.radikodesktop"))
-    } else if cfg!(target_os = "macos") {
-        std::env::var("HOME").ok().map(|d| {
-            std::path::PathBuf::from(d).join("Library/Application Support/dev.xacnio.radikodesktop")
-        })
-    } else {
-        std::env::var("HOME")
-            .ok()
-            .map(|d| std::path::PathBuf::from(d).join(".local/share/dev.xacnio.radikodesktop"))
-    };
-
-    if let Some(data_dir) = app_data {
+    if let Some(data_dir) = identifier_data_dir(CURRENT_IDENTIFIER) {
         let flag = data_dir.join(".pending_reset");
         if flag.exists() {
             tracing::info!("Pending reset detected, cleaning WebView data...");
@@ -34,21 +27,7 @@ pub fn check_pending_reset() {
             }
 
             // Delete cache directory
-            let cache_dir = if cfg!(target_os = "windows") {
-                std::env::var("LOCALAPPDATA")
-                    .ok()
-                    .map(|d| std::path::PathBuf::from(d).join("dev.xacnio.radikodesktop"))
-            } else if cfg!(target_os = "macos") {
-                std::env::var("HOME").ok().map(|d| {
-                    std::path::PathBuf::from(d).join("Library/Caches/dev.xacnio.radikodesktop")
-                })
-            } else {
-                std::env::var("HOME")
-                    .ok()
-                    .map(|d| std::path::PathBuf::from(d).join(".cache/dev.xacnio.radikodesktop"))
-            };
-
-            if let Some(cache) = cache_dir {
+            if let Some(cache) = identifier_cache_dir(CURRENT_IDENTIFIER) {
                 if cache.exists() {
                     tracing::info!("Deleting cache: {:?}", cache);
                     let _ = std::fs::remove_dir_all(&cache);
@@ -57,6 +36,160 @@ pub fn check_pending_reset() {
         }
     }
 }
+
+fn identifier_data_dir(identifier: &str) -> Option<PathBuf> {
+    if cfg!(target_os = "windows") {
+        std::env::var("APPDATA").ok().map(|d| PathBuf::from(d).join(identifier))
+    } else if cfg!(target_os = "macos") {
+        std::env::var("HOME")
+            .ok()
+            .map(|d| PathBuf::from(d).join("Library/Application Support").join(identifier))
+    } else {
+        std::env::var("HOME")
+            .ok()
+            .map(|d| PathBuf::from(d).join(".local/share").join(identifier))
+    }
+}
+
+fn identifier_cache_dir(identifier: &str) -> Option<PathBuf> {
+    if cfg!(target_os = "windows") {
+        std::env::var("LOCALAPPDATA").ok().map(|d| PathBuf::from(d).join(identifier))
+    } else if cfg!(target_os = "macos") {
+        std::env::var("HOME")
+            .ok()
+            .map(|d| PathBuf::from(d).join("Library/Caches").join(identifier))
+    } else {
+        std::env::var("HOME")
+            .ok()
+            .map(|d| PathBuf::from(d).join(".cache").join(identifier))
+    }
+}
+
+/// One-time migration from the previous "Radiko Desktop" install (identifier change on rename).
+/// Copies user data (settings, custom stations, identified songs, uploaded favicons) from the
+/// old data/cache directories into the new ones, then deletes the old directories. Must run
+/// before `Settings::load()` so the migrated settings are picked up on this very launch.
+pub fn migrate_legacy_data() {
+    if let Some(old_data) = identifier_data_dir(LEGACY_IDENTIFIER) {
+        if old_data.exists() {
+            if let Some(new_data) = identifier_data_dir(CURRENT_IDENTIFIER) {
+                if !new_data.join("settings.json").exists() {
+                    tracing::info!("Migrating legacy app data: {:?} -> {:?}", old_data, new_data);
+                    let _ = std::fs::create_dir_all(&new_data);
+                    for fname in ["settings.json", "custom_stations.json", "identified_songs.json"] {
+                        let src = old_data.join(fname);
+                        if src.exists() {
+                            if let Err(e) = std::fs::copy(&src, new_data.join(fname)) {
+                                tracing::warn!("Failed to migrate {}: {:?}", fname, e);
+                            }
+                        }
+                    }
+                }
+            }
+            let _ = std::fs::remove_dir_all(&old_data);
+        }
+    }
+
+    if let Some(old_cache) = identifier_cache_dir(LEGACY_IDENTIFIER) {
+        if old_cache.exists() {
+            if let Some(new_cache) = identifier_cache_dir(CURRENT_IDENTIFIER) {
+                let _ = std::fs::create_dir_all(&new_cache);
+                if let Ok(entries) = std::fs::read_dir(&old_cache) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if !path.is_file() {
+                            continue;
+                        }
+                        // Only user-uploaded favicons ("custom_*") are irreplaceable; downloaded
+                        // covers ("cover_<hash>.png") are re-fetched on demand, no need to migrate.
+                        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                            if name.starts_with("custom_") {
+                                let dest = new_cache.join(name);
+                                if !dest.exists() {
+                                    let _ = std::fs::copy(&path, &dest);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            let _ = std::fs::remove_dir_all(&old_cache);
+        }
+    }
+}
+
+/// Windows only: silently runs the previous "Radiko Desktop" installer's uninstaller (if still
+/// registered) and removes its stale Start Menu/Desktop shortcuts. Needed because the NSIS
+/// installer identifier changed with the rename, so Windows treats Radiocove as a separate
+/// product and won't clean up the old install on its own.
+#[cfg(target_os = "windows")]
+pub fn cleanup_legacy_windows_install() {
+    use std::os::windows::process::CommandExt;
+    use tracing::{info, warn};
+
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+    let ps_script = format!(
+        r#"
+$keys = @(
+    'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*',
+    'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*',
+    'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+)
+foreach ($k in $keys) {{
+    Get-ItemProperty $k -ErrorAction SilentlyContinue | Where-Object {{ $_.DisplayName -eq '{}' }} | ForEach-Object {{
+        if ($_.QuietUninstallString) {{ Write-Output $_.QuietUninstallString }}
+        elseif ($_.UninstallString) {{ Write-Output ($_.UninstallString + ' /S') }}
+    }}
+}}
+"#,
+        LEGACY_DISPLAY_NAME.replace('\'', "''")
+    );
+
+    match std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &ps_script])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+    {
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for line in stdout.lines().map(str::trim).filter(|l| !l.is_empty()) {
+                info!("Found legacy '{}' install, uninstalling: {}", LEGACY_DISPLAY_NAME, line);
+                match std::process::Command::new("cmd")
+                    .args(["/C", line])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status()
+                {
+                    Ok(status) => info!("Legacy uninstaller exited with: {:?}", status.code()),
+                    Err(e) => warn!("Failed to run legacy uninstaller: {:?}", e),
+                }
+            }
+        }
+        Err(e) => warn!("Failed to query legacy uninstall registry: {:?}", e),
+    }
+
+    // Remove stale shortcuts in case the old uninstaller didn't (or wasn't found at all).
+    let shortcut_name = format!("{}.lnk", LEGACY_DISPLAY_NAME);
+    if let Ok(appdata) = std::env::var("APPDATA") {
+        let p = PathBuf::from(appdata)
+            .join("Microsoft/Windows/Start Menu/Programs")
+            .join(&shortcut_name);
+        if p.exists() {
+            info!("Removing stale Start Menu shortcut: {:?}", p);
+            let _ = std::fs::remove_file(&p);
+        }
+    }
+    if let Ok(userprofile) = std::env::var("USERPROFILE") {
+        let p = PathBuf::from(userprofile).join("Desktop").join(&shortcut_name);
+        if p.exists() {
+            info!("Removing stale Desktop shortcut: {:?}", p);
+            let _ = std::fs::remove_file(&p);
+        }
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn cleanup_legacy_windows_install() {}
 
 /// Creates a default cover image ("default_cover_v2.png") for stations without a favicon.
 pub fn generate_default_cover(app: &App) {
@@ -128,7 +261,7 @@ pub fn setup_html_splash(app: &mut App, theme: Option<&str>) {
         "splash",
         tauri::WebviewUrl::App("splash.html".into()),
     )
-    .title("Radiko Desktop")
+    .title("Radiocove")
     .inner_size(340.0, 148.0)
     .center()
     .decorations(false)
@@ -145,11 +278,11 @@ pub fn setup_os_media_controls(app: &App) {
     if let Some(window) = window.clone() {
         #[cfg(target_os = "windows")]
         {
-            // Set AppUserModelID so Windows SMTC shows "Radiko" instead of "Unknown app"
+            // Set AppUserModelID so Windows SMTC shows "Radiocove" instead of "Unknown app"
             extern "system" {
                 fn SetCurrentProcessExplicitAppUserModelID(app_id: *const u16) -> i32;
             }
-            let app_id: Vec<u16> = "dev.xacnio.radikodesktop\0".encode_utf16().collect();
+            let app_id: Vec<u16> = "dev.xacnio.radiocove\0".encode_utf16().collect();
             unsafe {
                 SetCurrentProcessExplicitAppUserModelID(app_id.as_ptr());
             }
@@ -157,8 +290,8 @@ pub fn setup_os_media_controls(app: &App) {
             // Create Start Menu shortcut with AppUserModelID
             // so that SMTC can resolve the app name from the shortcut
             platform::shortcut::ensure_start_menu_shortcut(
-                "dev.xacnio.radikodesktop",
-                "Radiko Desktop",
+                "dev.xacnio.radiocove",
+                "Radiocove",
             );
 
             if let Ok(hwnd) = window.hwnd() {
@@ -340,7 +473,7 @@ fn update_tray_menu(app: &tauri::AppHandle, lang: &str) -> Result<(), Box<dyn st
     let state = app.state::<crate::state::AppState>();
     let (status, station_name, song_title) = {
         let inner = state.inner.lock().unwrap();
-        let s_name = inner.station_name.clone().unwrap_or_else(|| "Radiko".to_string());
+        let s_name = inner.station_name.clone().unwrap_or_else(|| "Radiocove".to_string());
         let s_title = inner.stream_metadata.as_ref().and_then(|m| m.title.clone());
         (inner.status.clone(), s_name, s_title)
     };
@@ -355,10 +488,10 @@ fn update_tray_menu(app: &tauri::AppHandle, lang: &str) -> Result<(), Box<dyn st
             }
             format!("📻 {}", display)
         }
-    } else if station_name != "Radiko" && !station_name.trim().is_empty() {
+    } else if station_name != "Radiocove" && !station_name.trim().is_empty() {
         format!("📻 {}", station_name)
     } else {
-        "Radiko Desktop".to_string()
+        "Radiocove".to_string()
     };
 
     let info_i = MenuItem::with_id(app, "info", info_text, false, None::<&str>)?;
@@ -426,7 +559,7 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         "tray",
         tauri::WebviewUrl::App("index.html".into()),
     )
-    .title("Radiko Mini Player")
+    .title("Radiocove Mini Player")
     .inner_size(320.0, 88.0)
     .decorations(false)
     .always_on_top(true)
@@ -483,7 +616,7 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let _tray = TrayIconBuilder::with_id("main_tray")
         .icon(app.default_window_icon().unwrap().clone())
         .show_menu_on_left_click(false)
-        .tooltip("Radiko Desktop")
+        .tooltip("Radiocove")
         .on_menu_event(move |app: &tauri::AppHandle, event| {
             match event.id.as_ref() {
                 "mini" => {

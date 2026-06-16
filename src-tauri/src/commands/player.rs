@@ -87,7 +87,7 @@ pub async fn play(
                     {
                         if let Some(app_state) = app_clone.try_state::<AppState>() {
                             if let Ok(ps) = app_state.inner.lock() {
-                                let artist = ps.station_name.as_deref().unwrap_or("Radiko Desktop");
+                                let artist = ps.station_name.as_deref().unwrap_or("Radiocove");
                                 let title_opt =
                                     ps.stream_metadata.as_ref().and_then(|m| m.title.clone());
                                 let title = title_opt.as_deref().unwrap_or(artist);

@@ -118,7 +118,7 @@ export default function SetupScreen({ onComplete }) {
             <div className="w-[500px] max-h-[600px] bg-bg-secondary rounded-2xl border border-border overflow-hidden flex flex-col">
                 {/* Header */}
                 <div className="text-center py-6 px-6 border-b border-border">
-                    <img src="/icon.svg" alt="Radiko Logo" className="w-16 h-16 mx-auto mb-3 drop-shadow-md" />
+                    <img src="/icon.svg" alt="Radiocove Logo" className="w-16 h-16 mx-auto mb-3 drop-shadow-md" />
                     <h1 className="text-xl font-bold text-text-primary">{t('setup.setupTitle')}</h1>
                     <p className="text-xs text-text-muted mt-1">
                         {step === 1 && t('setup.selectCountry')}

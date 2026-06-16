@@ -22,7 +22,7 @@ pub async fn probe_station(url: String) -> Result<ProbeResult, AppError> {
     if url.contains(".m3u8") {
         let resp = client
             .get(&url)
-            .header("User-Agent", "Radiko/1.0")
+            .header("User-Agent", "Radiocove/1.0")
             .send()
             .await
             .map_err(|e| AppError::Settings(e.to_string()))?;
@@ -96,7 +96,7 @@ pub async fn probe_station(url: String) -> Result<ProbeResult, AppError> {
                 if dur > 0.0 {
                     if let Ok(resp) = client
                         .get(&seg)
-                        .header("User-Agent", "Radiko/1.0")
+                        .header("User-Agent", "Radiocove/1.0")
                         .send()
                         .await
                     {
