@@ -13,6 +13,8 @@ use settings::Settings;
 use state::AppState;
 use tauri::Manager;
 
+pub static IS_QUITTING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tracing_subscriber::fmt()
@@ -199,7 +201,9 @@ pub fn run() {
             // Keep the app alive when all windows are destroyed (tray icon stays active).
             // Explicit app.exit(0) calls bypass this event, so tray "Quit" still works.
             if let tauri::RunEvent::ExitRequested { api, .. } = event {
-                api.prevent_exit();
+                if !IS_QUITTING.load(std::sync::atomic::Ordering::SeqCst) {
+                    api.prevent_exit();
+                }
             }
         });
 }
