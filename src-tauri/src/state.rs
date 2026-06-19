@@ -5,6 +5,16 @@ use std::time::Instant;
 use crate::player::types::{PlaybackStatus, StreamMetadata};
 use crate::player::PlayerHandle;
 use crate::services::discord_rpc::DiscordRpc;
+use crate::services::media::MediaSession;
+
+/// Tracks whether a window has ever been shown, and if currently hidden, since when —
+/// used by the idle-destroy poller to free background windows without touching every
+/// individual hide call site.
+#[derive(Default)]
+pub struct WindowIdleTracker {
+    pub ever_shown: bool,
+    pub hidden_since: Option<Instant>,
+}
 
 pub struct AppState {
     pub inner: Arc<Mutex<PlayerState>>,
@@ -17,6 +27,14 @@ pub struct AppState {
     pub last_device_restart: Arc<Mutex<Option<Instant>>>,
     /// Discord Rich Presence client
     pub discord_rpc: Arc<DiscordRpc>,
+    /// OS media transport controls, rebuilt whenever the "main" window is recreated
+    /// (Windows SMTC is bound to a HWND and can't be rebound to a new one).
+    pub media_session: Mutex<Option<MediaSession>>,
+    pub main_idle: Mutex<WindowIdleTracker>,
+    pub tray_idle: Mutex<WindowIdleTracker>,
+    /// Last known good "main" window size/position, preserved across destroy/recreate
+    /// cycles so the window reopens where the user left it.
+    pub main_geometry: Mutex<Option<(tauri::PhysicalSize<u32>, tauri::PhysicalPosition<i32>)>>,
 }
 
 pub struct PlayerState {
@@ -68,6 +86,10 @@ impl AppState {
             hls_session_cache: Arc::new(Mutex::new(HashMap::new())),
             last_device_restart: Arc::new(Mutex::new(None)),
             discord_rpc: Arc::new(DiscordRpc::new(discord_enabled)),
+            media_session: Mutex::new(None),
+            main_idle: Mutex::new(WindowIdleTracker::default()),
+            tray_idle: Mutex::new(WindowIdleTracker::default()),
+            main_geometry: Mutex::new(None),
         }
     }
 }

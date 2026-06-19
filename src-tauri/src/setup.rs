@@ -270,117 +270,247 @@ pub fn setup_html_splash(app: &mut App, theme: Option<&str>) {
     .build();
 }
 
-/// Initialises OS media transport controls (Windows SMTC or macOS Now Playing) and event listeners.
-pub fn setup_os_media_controls(app: &App) {
-    let window = app.get_webview_window("main");
-    #[allow(unused_variables)]
-    if let Some(window) = window.clone() {
-        #[cfg(target_os = "windows")]
-        {
-            // Set AppUserModelID so Windows SMTC shows "Radiocove" instead of "Unknown app"
-            extern "system" {
-                fn SetCurrentProcessExplicitAppUserModelID(app_id: *const u16) -> i32;
-            }
-            let app_id: Vec<u16> = "dev.xacnio.radiocove\0".encode_utf16().collect();
-            unsafe {
-                SetCurrentProcessExplicitAppUserModelID(app_id.as_ptr());
-            }
+/// Same as `setup_html_splash` but works with an `AppHandle` (used when recreating the main window).
+#[cfg(not(target_os = "windows"))]
+fn show_html_splash_handle(app: &tauri::AppHandle) {
+    let is_light = dark_light::detect() == dark_light::Mode::Light;
+    let bg_color: (u8, u8, u8, u8) = if is_light { (245, 245, 245, 255) } else { (13, 13, 13, 255) };
+    let _ = tauri::WebviewWindowBuilder::new(
+        app,
+        "splash",
+        tauri::WebviewUrl::App("splash.html".into()),
+    )
+    .title("Radiocove")
+    .inner_size(340.0, 148.0)
+    .center()
+    .decorations(false)
+    .background_color(bg_color.into())
+    .always_on_top(true)
+    .resizable(false)
+    .build();
+}
 
-            // Create Start Menu shortcut with AppUserModelID
-            // so that SMTC can resolve the app name from the shortcut
-            platform::shortcut::ensure_start_menu_shortcut(
-                "dev.xacnio.radiocove",
-                "Radiocove",
-            );
-
-            if let Ok(hwnd) = window.hwnd() {
-                let hwnd_ptr = hwnd.0;
-                if let Some(session) = MediaSession::new(hwnd_ptr, app.handle().clone()) {
-                    app.manage(session);
-                }
-                // Add thumbnail toolbar buttons (prev/play-pause/next)
-                platform::thumbbar::setup_thumb_buttons(hwnd.0 as isize, app.handle().clone());
-            }
+/// Initialises OS media transport controls (Windows SMTC or macOS Now Playing) and event listeners
+/// for the "main" window. Called once at startup, and again every time "main" is recreated after
+/// being destroyed by the idle-destroy poller (see `get_or_create_main_window`) — Windows SMTC and
+/// the thumbnail toolbar are bound to the window's HWND, which changes on every recreate.
+pub fn attach_main_window_listeners(app: &tauri::AppHandle, window: &tauri::WebviewWindow) {
+    #[cfg(target_os = "windows")]
+    {
+        // Set AppUserModelID so Windows SMTC shows "Radiocove" instead of "Unknown app"
+        extern "system" {
+            fn SetCurrentProcessExplicitAppUserModelID(app_id: *const u16) -> i32;
+        }
+        let app_id: Vec<u16> = "dev.xacnio.radiocove\0".encode_utf16().collect();
+        unsafe {
+            SetCurrentProcessExplicitAppUserModelID(app_id.as_ptr());
         }
 
-        #[cfg(not(target_os = "windows"))]
-        {
-            if let Some(session) = MediaSession::new(std::ptr::null_mut(), app.handle().clone()) {
-                app.manage(session);
+        // Create Start Menu shortcut with AppUserModelID
+        // so that SMTC can resolve the app name from the shortcut
+        platform::shortcut::ensure_start_menu_shortcut(
+            "dev.xacnio.radiocove",
+            "Radiocove",
+        );
+
+        if let Ok(hwnd) = window.hwnd() {
+            let hwnd_ptr = hwnd.0;
+            let session = MediaSession::new(hwnd_ptr, app.clone());
+            if session.is_some() {
+                *app.state::<AppState>().media_session.lock().unwrap() = session;
             }
+            // Add thumbnail toolbar buttons (prev/play-pause/next)
+            platform::thumbbar::setup_thumb_buttons(hwnd.0 as isize, app.clone());
         }
 
-        let win_clone = window.clone();
-        
-        // macOS: Use native NSWindowWillMiniaturizeNotification instead of polling
-        #[cfg(target_os = "macos")]
-        {
-            let app_handle = app.handle().clone();
-            // Small delay to ensure the window is fully initialized
-            tauri::async_runtime::spawn(async move {
-                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-                crate::platform::macos::register_miniaturize_observer(&app_handle);
-                crate::platform::macos::register_default_device_listener(app_handle);
-                tracing::info!("macOS observers registered");
-            });
-        }
-        
+        // Off-screen / wrong-size fix: Win+D with decorations:false causes the window to
+        // restore with a corrupted size/position. Save last known good geometry (persisted
+        // in AppState so it survives a destroy/recreate cycle) and restore it if corrupted.
+        let win = window.clone();
+        let app_handle = app.clone();
         window.on_window_event(move |event| match event {
             tauri::WindowEvent::Resized(_) => {
-                #[cfg(not(target_os = "macos"))]
-                {
-                    let win = win_clone.clone();
-                    let is_min = win.is_minimized().unwrap_or(false);
-                    
-                    if is_min {
-                        let state = win.state::<crate::state::AppState>();
-                        let minimize_to_tray = state.inner.lock().unwrap().minimize_to_tray;
-                        
-                        if minimize_to_tray {
-                            tracing::info!("Window minimized, hiding to tray");
-                            let _ = win.hide();
+                if win.is_minimized().unwrap_or(false) {
+                    return;
+                }
+                if let (Ok(size), Ok(pos)) = (win.outer_size(), win.outer_position()) {
+                    let sf = win.scale_factor().unwrap_or(1.0);
+                    let min_w_phys = (650f64 * sf) as u32;
+                    let min_h_phys = (600f64 * sf) as u32;
+                    let state = app_handle.state::<AppState>();
+
+                    if size.width >= min_w_phys && size.height >= min_h_phys {
+                        let monitors = win.available_monitors().unwrap_or_default();
+                        let on_screen = monitors.iter().any(|m| {
+                            let mp = m.position();
+                            let ms = m.size();
+                            pos.x < mp.x + ms.width as i32
+                                && pos.x + size.width as i32 > mp.x
+                                && pos.y < mp.y + ms.height as i32
+                                && pos.y + size.height as i32 > mp.y
+                        });
+                        if on_screen {
+                            *state.main_geometry.lock().unwrap() = Some((size, pos));
+                        }
+                    } else {
+                        tracing::warn!("Window corrupted to {:?}, restoring last known size", size);
+                        let saved = *state.main_geometry.lock().unwrap();
+                        if let Some((saved_size, saved_pos)) = saved {
+                            let _ = win.set_size(saved_size);
+                            let _ = win.set_position(saved_pos);
+                        } else {
+                            let _ = win.set_size(tauri::PhysicalSize::new(min_w_phys, min_h_phys));
+                            let _ = win.center();
                         }
                     }
                 }
-                crate::commands::internal_layout_link_view(&win_clone);
             }
-            tauri::WindowEvent::Focused(focused) => {
-                // When window gains focus, restore Regular policy on macOS
-                // so it appears in Dock and Cmd+Tab
-                #[cfg(target_os = "macos")]
-                if *focused && win_clone.is_visible().unwrap_or(false) {
-                    tracing::info!("Window focused, setting Regular policy");
-                    let _ = win_clone.app_handle().set_activation_policy(tauri::ActivationPolicy::Regular);
+            tauri::WindowEvent::Moved(pos) => {
+                if win.is_minimized().unwrap_or(false) {
+                    return;
                 }
-            }
-            tauri::WindowEvent::ScaleFactorChanged { .. } => {
-                crate::commands::internal_layout_link_view(&win_clone);
-            }
-            tauri::WindowEvent::CloseRequested { api, .. } => {
-                let state = win_clone.state::<crate::state::AppState>();
-                let close_to_tray = state.inner.lock().unwrap().close_to_tray;
-
-                if close_to_tray {
-                    tracing::info!("DEBUG: Close requested, hiding to tray");
-                    #[cfg(target_os = "macos")]
-                    let _ = win_clone.app_handle().set_activation_policy(tauri::ActivationPolicy::Accessory);
-                    let _ = win_clone.hide();
-                    api.prevent_close();
-                } else {
-                    let _ = win_clone.hide();
-                    let handle = win_clone.app_handle().clone();
-                    tauri::async_runtime::spawn(async move {
-                        for win in handle.webview_windows().values() {
-                            let _ = win.destroy();
-                        }
-                        tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
-                        handle.exit(0);
-                    });
-                    api.prevent_close();
+                let state = app_handle.state::<AppState>();
+                let mut g = state.main_geometry.lock().unwrap();
+                if let Some((size, _)) = *g {
+                    *g = Some((size, *pos));
                 }
             }
             _ => {}
         });
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let session = MediaSession::new(std::ptr::null_mut(), app.clone());
+        if session.is_some() {
+            *app.state::<AppState>().media_session.lock().unwrap() = session;
+        }
+    }
+
+    let win_clone = window.clone();
+
+    // macOS: Use native NSWindowWillMiniaturizeNotification instead of polling
+    #[cfg(target_os = "macos")]
+    {
+        let app_handle = app.clone();
+        // Small delay to ensure the window is fully initialized
+        tauri::async_runtime::spawn(async move {
+            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+            crate::platform::macos::register_miniaturize_observer(&app_handle);
+            crate::platform::macos::register_default_device_listener(app_handle);
+            tracing::info!("macOS observers registered");
+        });
+    }
+
+    window.on_window_event(move |event| match event {
+        tauri::WindowEvent::Resized(_) => {
+            #[cfg(not(target_os = "macos"))]
+            {
+                let win = win_clone.clone();
+                let is_min = win.is_minimized().unwrap_or(false);
+
+                if is_min {
+                    let state = win.state::<crate::state::AppState>();
+                    let minimize_to_tray = state.inner.lock().unwrap().minimize_to_tray;
+
+                    if minimize_to_tray {
+                        tracing::info!("Window minimized, hiding to tray");
+                        let _ = win.hide();
+                    }
+                }
+            }
+            crate::commands::internal_layout_link_view(&win_clone);
+        }
+        tauri::WindowEvent::Focused(_focused) => {
+            #[cfg(target_os = "macos")]
+            if *_focused && win_clone.is_visible().unwrap_or(false) {
+                tracing::info!("Window focused, setting Regular policy");
+                let _ = win_clone.app_handle().set_activation_policy(tauri::ActivationPolicy::Regular);
+            }
+        }
+        tauri::WindowEvent::ScaleFactorChanged { .. } => {
+            crate::commands::internal_layout_link_view(&win_clone);
+        }
+        tauri::WindowEvent::CloseRequested { api, .. } => {
+            let state = win_clone.state::<crate::state::AppState>();
+            let close_to_tray = state.inner.lock().unwrap().close_to_tray;
+
+            if close_to_tray {
+                tracing::info!("DEBUG: Close requested, hiding to tray");
+                #[cfg(target_os = "macos")]
+                let _ = win_clone.app_handle().set_activation_policy(tauri::ActivationPolicy::Accessory);
+                let _ = win_clone.hide();
+                api.prevent_close();
+            } else {
+                let _ = win_clone.hide();
+                let handle = win_clone.app_handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    for win in handle.webview_windows().values() {
+                        let _ = win.destroy();
+                    }
+                    tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
+                    handle.exit(0);
+                });
+                api.prevent_close();
+            }
+        }
+        _ => {}
+    });
+}
+
+/// Initialises OS media transport controls for the "main" window at startup.
+pub fn setup_os_media_controls(app: &App) {
+    if let Some(window) = app.get_webview_window("main") {
+        attach_main_window_listeners(&app.handle().clone(), &window);
+    }
+}
+
+/// Returns the "main" window, recreating it (with all listeners/SMTC/thumbbar reattached) if it
+/// was destroyed by the idle-destroy poller. Reused by every "show the main window" call site.
+pub fn get_or_create_main_window(app: &tauri::AppHandle) -> tauri::WebviewWindow {
+    if let Some(window) = app.get_webview_window("main") {
+        return window;
+    }
+
+    tracing::info!("Recreating destroyed 'main' window");
+
+    // Show loading indicator while WebView reloads
+    let splash = platform::splash::SplashScreen::show(); // Windows: native Win32 splash
+    #[cfg(not(target_os = "windows"))]
+    show_html_splash_handle(app); // macOS/Linux: HTML splash window
+
+    let saved_geometry = *app.state::<AppState>().main_geometry.lock().unwrap();
+
+    let mut builder = tauri::WebviewWindowBuilder::new(
+        app,
+        "main",
+        tauri::WebviewUrl::App("index.html".into()),
+    )
+    .title("Radiocove")
+    .inner_size(1100.0, 700.0)
+    .min_inner_size(650.0, 600.0)
+    .resizable(true)
+    .decorations(false)
+    .transparent(false)
+    .visible(false);
+
+    if let Some((size, pos)) = saved_geometry {
+        builder = builder
+            .inner_size(size.width as f64, size.height as f64)
+            .position(pos.x as f64, pos.y as f64);
+    } else {
+        builder = builder.center();
+    }
+
+    match builder.build() {
+        Ok(window) => {
+            attach_main_window_listeners(app, &window);
+            await_frontend_and_close_splash(app.clone(), splash);
+            window
+        }
+        Err(e) => {
+            panic!("Failed to recreate 'main' window: {:?}", e);
+        }
     }
 }
 
@@ -540,18 +670,10 @@ fn update_tray_menu(app: &tauri::AppHandle, lang: &str) -> Result<(), Box<dyn st
     Ok(())
 }
 
-pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
-    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-    use tauri::{Emitter, Manager};
-    #[cfg(not(target_os = "linux"))]
-    use tauri_plugin_positioner::{WindowExt, Position};
-
-    let dir = app.path().app_data_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-    let settings = crate::settings::Settings::load(&dir);
-    let initial_lang = settings.language.unwrap_or_else(|| "en".to_string());
-    let lang_ref = std::sync::Arc::new(std::sync::Mutex::new(initial_lang.clone()));
-
-    // Pre-create the tray window
+/// Builds the "tray" mini-player window and attaches its focus-loss-hide listener
+/// (Linux/macOS). Called at startup, and again to recreate the window after the
+/// idle-destroy poller destroys it.
+pub fn create_tray_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewWindow> {
     #[allow(unused_mut)]
     let mut builder = tauri::WebviewWindowBuilder::new(
         app,
@@ -612,6 +734,37 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         _ => {}
     });
 
+    Ok(_tray_win)
+}
+
+/// Returns the "tray" window, recreating it if it was destroyed by the idle-destroy poller.
+pub fn get_or_create_tray_window(app: &tauri::AppHandle) -> Option<tauri::WebviewWindow> {
+    if let Some(window) = app.get_webview_window("tray") {
+        return Some(window);
+    }
+    tracing::info!("Recreating destroyed 'tray' window");
+    match create_tray_window(app) {
+        Ok(window) => Some(window),
+        Err(e) => {
+            tracing::error!("Failed to recreate 'tray' window: {:?}", e);
+            None
+        }
+    }
+}
+
+pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+    use tauri::{Emitter, Manager};
+    #[cfg(not(target_os = "linux"))]
+    use tauri_plugin_positioner::{WindowExt, Position};
+
+    let dir = app.path().app_data_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    let settings = crate::settings::Settings::load(&dir);
+    let initial_lang = settings.language.unwrap_or_else(|| "en".to_string());
+    let lang_ref = std::sync::Arc::new(std::sync::Mutex::new(initial_lang.clone()));
+
+    create_tray_window(&app.handle().clone())?;
+
     let _tray = TrayIconBuilder::with_id("main_tray")
         .icon(app.default_window_icon().unwrap().clone())
         .show_menu_on_left_click(false)
@@ -621,7 +774,7 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                 "mini" => {
                     println!("TRAY: 'mini' menu item clicked");
                     tracing::info!("Tray: 'mini' menu item clicked");
-                    if let Some(window) = app.get_webview_window("tray") {
+                    if let Some(window) = get_or_create_tray_window(app) {
                         if window.is_visible().unwrap_or(false) {
                             let _ = window.hide();
                         } else {
@@ -703,13 +856,12 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                 }
                 "show" => {
                     println!("TRAY: 'show' menu item clicked");
-                    if let Some(window) = app.get_webview_window("main") {
-                        #[cfg(target_os = "macos")]
-                        let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
-                        let _ = window.unminimize();
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
+                    let window = get_or_create_main_window(app);
+                    #[cfg(target_os = "macos")]
+                    let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+                    let _ = window.unminimize();
+                    let _ = window.show();
+                    let _ = window.set_focus();
                 }
                 "play_pause" => {
                     let h = app.clone();
@@ -793,7 +945,7 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                     }
 
                     let app = tray.app_handle();
-                    if let Some(window) = app.get_webview_window("tray") {
+                    if let Some(window) = get_or_create_tray_window(app) {
                         if window.is_visible().unwrap_or(false) {
                             let _ = window.hide();
                         } else {
@@ -801,7 +953,7 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                             {
                                 // Screen-aware positioning for Linux tray clicks
                                 let size = window.inner_size().unwrap_or(tauri::PhysicalSize { width: 320, height: 88 });
-                                
+
                                 // Identify which monitor the click happened on
                                 let monitor = app.monitor_from_point(position.x, position.y).ok().flatten()
                                     .or_else(|| window.primary_monitor().ok().flatten());
@@ -897,10 +1049,11 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                     button: MouseButton::Left,
                     ..
                 } => {
-                    if let Some(main) = tray.app_handle().get_webview_window("main") {
+                    {
+                        let main = get_or_create_main_window(tray.app_handle());
                         let is_visible = main.is_visible().unwrap_or(false);
                         let is_minimized = main.is_minimized().unwrap_or(false);
-                        
+
                         if is_visible && !is_minimized {
                             let _ = main.hide();
                             #[cfg(target_os = "macos")]
@@ -960,5 +1113,57 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         });
     }
 
+    spawn_idle_window_destroyer(app.handle().clone());
+
     Ok(())
+}
+
+/// Destroys hidden "main"/"tray" windows after their grace period to free memory.
+/// `ever_shown` prevents destroying "tray" before it's been opened even once.
+/// The app keeps running with zero windows open (see RunEvent::ExitRequested in lib.rs).
+fn spawn_idle_window_destroyer(app: tauri::AppHandle) {
+    const MAIN_GRACE: std::time::Duration = std::time::Duration::from_secs(300); // 5 minutes
+    const TRAY_GRACE: std::time::Duration = std::time::Duration::from_secs(30);
+
+    tauri::async_runtime::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
+        loop {
+            interval.tick().await;
+            let Some(state) = app.try_state::<AppState>() else { continue };
+
+            check_idle_window(&app, "main", &state.main_idle, MAIN_GRACE);
+            check_idle_window(&app, "tray", &state.tray_idle, TRAY_GRACE);
+        }
+    });
+}
+
+fn check_idle_window(
+    app: &tauri::AppHandle,
+    label: &str,
+    tracker: &std::sync::Mutex<crate::state::WindowIdleTracker>,
+    grace: std::time::Duration,
+) {
+    let Some(window) = app.get_webview_window(label) else { return };
+    let visible = window.is_visible().unwrap_or(true);
+    let mut t = tracker.lock().unwrap();
+
+    if visible {
+        t.ever_shown = true;
+        t.hidden_since = None;
+        return;
+    }
+
+    if !t.ever_shown {
+        return;
+    }
+
+    match t.hidden_since {
+        None => t.hidden_since = Some(std::time::Instant::now()),
+        Some(since) if since.elapsed() >= grace => {
+            tracing::info!("'{}' window idle for {:?}, destroying to free memory", label, grace);
+            let _ = window.destroy();
+            *t = crate::state::WindowIdleTracker::default();
+        }
+        Some(_) => {}
+    }
 }
