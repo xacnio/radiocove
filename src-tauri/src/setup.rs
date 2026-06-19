@@ -491,7 +491,6 @@ pub fn get_or_create_main_window(app: &tauri::AppHandle) -> tauri::WebviewWindow
     .min_inner_size(650.0, 600.0)
     .resizable(true)
     .decorations(false)
-    .transparent(false)
     .visible(false);
 
     if let Some((size, pos)) = saved_geometry {
@@ -858,7 +857,9 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                     println!("TRAY: 'show' menu item clicked");
                     let window = get_or_create_main_window(app);
                     #[cfg(target_os = "macos")]
-                    let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+                    {
+                        let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+                    }
                     let _ = window.unminimize();
                     let _ = window.show();
                     let _ = window.set_focus();
@@ -928,9 +929,9 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                     position,
                     ..
                 } if button == MouseButton::Left && (cfg!(target_os = "linux") || button_state == MouseButtonState::Up) => {
+                    let _ = position;
                     #[cfg(target_os = "windows")]
                     {
-                        let _ = position;
                         let last_hide = crate::platform::mouse_hook::LAST_HIDE_TIME.load(std::sync::atomic::Ordering::SeqCst);
                         let now = std::time::SystemTime::now()
                             .duration_since(std::time::UNIX_EPOCH)
