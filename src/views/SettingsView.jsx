@@ -103,9 +103,11 @@ export default function SettingsView({
     const [audioDevices, setAudioDevices] = useState([]);
     const [selectedDevice, setSelectedDevice] = useState('');
     const [currentOs, setCurrentOs] = useState('');
+    const [isPackagedInstall, setIsPackagedInstall] = useState(false);
 
     useEffect(() => {
         invoke('get_os').then(setCurrentOs).catch(console.error);
+        invoke('is_packaged_install').then(setIsPackagedInstall).catch(console.error);
     }, []);
 
     useEffect(() => {
@@ -845,49 +847,56 @@ export default function SettingsView({
                                 >
                                     <Github size={16} /> GitHub <ExternalLink size={12} className="opacity-40 group-hover:opacity-100 transition-opacity" />
                                 </button>
-                                <button
-                                    onClick={async () => {
-                                        if (isCheckingUpdate) return;
-                                        setIsCheckingUpdate(true);
-                                        setUpdateStatus('loading');
-                                        try {
-                                            const update = await check();
-                                            if (update) {
-                                                setUpdateResult(update);
-                                                setUpdateStatus('found');
-                                                notify({
-                                                    type: 'info',
-                                                    title: t('settings.updateAvailable'),
-                                                    message: t('settings.updateFound', { version: update.version })
-                                                });
-                                            } else {
-                                                setUpdateStatus('latest');
+                                {!isPackagedInstall && (
+                                    <button
+                                        onClick={async () => {
+                                            if (isCheckingUpdate) return;
+                                            setIsCheckingUpdate(true);
+                                            setUpdateStatus('loading');
+                                            try {
+                                                const update = await check();
+                                                if (update) {
+                                                    setUpdateResult(update);
+                                                    setUpdateStatus('found');
+                                                    notify({
+                                                        type: 'info',
+                                                        title: t('settings.updateAvailable'),
+                                                        message: t('settings.updateFound', { version: update.version })
+                                                    });
+                                                } else {
+                                                    setUpdateStatus('latest');
+                                                }
+                                            } catch (e) {
+                                                const errStr = e.toString();
+                                                if (errStr.includes('404') || errStr.includes('Not Found') || errStr.includes('403')) {
+                                                    setUpdateStatus('latest');
+                                                } else {
+                                                    setUpdateStatus('error');
+                                                    notify({ type: 'error', title: t('settings.updateError'), message: errStr });
+                                                }
+                                            } finally {
+                                                setIsCheckingUpdate(false);
                                             }
-                                        } catch (e) {
-                                            const errStr = e.toString();
-                                            if (errStr.includes('404') || errStr.includes('Not Found') || errStr.includes('403')) {
-                                                setUpdateStatus('latest');
-                                            } else {
-                                                setUpdateStatus('error');
-                                                notify({ type: 'error', title: t('settings.updateError'), message: errStr });
-                                            }
-                                        } finally {
-                                            setIsCheckingUpdate(false);
-                                        }
-                                    }}
-                                    disabled={isCheckingUpdate || updateStatus === 'downloading' || updateStatus === 'ready'}
-                                    className={`px-5 py-2.5 rounded-xl transition-all border flex items-center gap-2 font-bold text-xs group active:scale-95
-                                        ${updateStatus === 'found' ? 'bg-accent text-bg-primary border-accent shadow-lg shadow-accent/20' :
-                                            updateStatus === 'loading' ? 'bg-bg-surface-active text-text-muted border-border/30' :
-                                                'bg-bg-surface/50 hover:bg-bg-surface-hover text-text-primary border-border/30'}`}
-                                >
-                                    {updateStatus === 'loading' ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                                    {updateStatus === 'found' ? t('settings.updateAvailable') :
-                                        updateStatus === 'loading' ? t('settings.checkingUpdates') :
-                                            updateStatus === 'latest' ? t('settings.updateLatest') :
-                                                t('settings.checkForUpdates')}
-                                </button>
+                                        }}
+                                        disabled={isCheckingUpdate || updateStatus === 'downloading' || updateStatus === 'ready'}
+                                        className={`px-5 py-2.5 rounded-xl transition-all border flex items-center gap-2 font-bold text-xs group active:scale-95
+                                            ${updateStatus === 'found' ? 'bg-accent text-bg-primary border-accent shadow-lg shadow-accent/20' :
+                                                updateStatus === 'loading' ? 'bg-bg-surface-active text-text-muted border-border/30' :
+                                                    'bg-bg-surface/50 hover:bg-bg-surface-hover text-text-primary border-border/30'}`}
+                                    >
+                                        {updateStatus === 'loading' ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                                        {updateStatus === 'found' ? t('settings.updateAvailable') :
+                                            updateStatus === 'loading' ? t('settings.checkingUpdates') :
+                                                updateStatus === 'latest' ? t('settings.updateLatest') :
+                                                    t('settings.checkForUpdates')}
+                                    </button>
+                                )}
                             </div>
+                            {isPackagedInstall && (
+                                <div className="mt-4 text-[11px] text-text-muted font-medium">
+                                    {t('settings.updateManagedByStore')}
+                                </div>
+                            )}
 
                             {/* Update Found / Downloading Panel */}
                             {(updateStatus === 'found' || updateStatus === 'downloading' || updateStatus === 'ready') && (

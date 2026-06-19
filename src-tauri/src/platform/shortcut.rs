@@ -6,10 +6,31 @@
 //! We use PowerShell to create the shortcut since the Windows Shell COM APIs
 //! are complex to use correctly from Rust.
 
+/// Returns true if the process is running from an installed MSIX/AppX package.
+///
+/// Packaged apps already get a Start Menu entry from their manifest, so we must not
+/// also write a physical .lnk shortcut or it shows up twice.
+#[cfg(target_os = "windows")]
+pub fn is_packaged() -> bool {
+    extern "system" {
+        fn GetCurrentPackageFullName(length: *mut u32, full_name: *mut u16) -> u32;
+    }
+    const APPMODEL_ERROR_NO_PACKAGE: u32 = 15700;
+
+    let mut length: u32 = 0;
+    let result = unsafe { GetCurrentPackageFullName(&mut length, std::ptr::null_mut()) };
+    result != APPMODEL_ERROR_NO_PACKAGE
+}
+
 #[cfg(target_os = "windows")]
 pub fn ensure_start_menu_shortcut(app_user_model_id: &str, display_name: &str) {
     use std::os::windows::process::CommandExt;
     use tracing::{info, warn};
+
+    if is_packaged() {
+        info!("Running as a packaged app (MSIX); skipping Start Menu shortcut creation");
+        return;
+    }
 
     // Get the current executable path
     let exe_path = match std::env::current_exe() {

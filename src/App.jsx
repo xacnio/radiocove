@@ -238,6 +238,8 @@ function AppInner({ isPlayerHorizontal, setIsPlayerHorizontal, linkViewOpen, set
         const initAutoUpdate = async () => {
             if (localStorage.getItem('auto_update') !== 'false') {
                 try {
+                    // Microsoft Store/MSIX installs are updated by the Store, not the in-app updater.
+                    if (await invoke('is_packaged_install')) return;
                     const update = await check();
                     if (update) {
                         notify({

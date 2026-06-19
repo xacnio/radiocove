@@ -196,6 +196,7 @@
         "checkingUpdates": "Checking...",
         "updateAvailable": "New Update Available!",
         "updateLatest": "App is Up to Date",
+        "updateManagedByStore": "Updates for this installation are managed by Microsoft Store.",
         "updateError": "Update error",
         "downloadingUpdate": "Downloading update... {{percent}}%",
         "installUpdate": "Install and Restart Now",

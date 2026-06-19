@@ -406,3 +406,17 @@ pub async fn fetch_live_listeners(url: String) -> Result<Option<u32>, AppError> 
 pub fn get_os() -> String {
     std::env::consts::OS.to_string()
 }
+
+/// True when running from an installed MSIX/AppX package (e.g. Microsoft Store).
+/// Such installs are updated by the Store, not by the in-app updater.
+#[tauri::command]
+pub fn is_packaged_install() -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        crate::platform::shortcut::is_packaged()
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        false
+    }
+}

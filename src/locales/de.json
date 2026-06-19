@@ -196,6 +196,7 @@
         "checkingUpdates": "Wird überprüft...",
         "updateAvailable": "Neues Update verfügbar!",
         "updateLatest": "App ist auf dem neuesten Stand",
+        "updateManagedByStore": "Updates für diese Installation werden vom Microsoft Store verwaltet.",
         "updateError": "Update-Fehler",
         "downloadingUpdate": "Update wird heruntergeladen... {{percent}}%",
         "installUpdate": "Jetzt installieren und neu starten",

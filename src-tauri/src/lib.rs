@@ -212,6 +212,7 @@ pub fn run() {
             commands::close_browser_window,
             commands::fetch_live_listeners,
             commands::get_os,
+            commands::is_packaged_install,
             commands::minimize_browser_window,
             commands::maximize_browser_window,
             commands::drag_window,

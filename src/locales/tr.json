@@ -196,6 +196,7 @@
         "checkingUpdates": "Kontrol ediliyor...",
         "updateAvailable": "Yeni Güncelleme Mevcut!",
         "updateLatest": "Uygulama Güncel",
+        "updateManagedByStore": "Bu kurulumun güncellemeleri Microsoft Store tarafından yönetilir.",
         "updateError": "Güncelleme hatası",
         "downloadingUpdate": "Güncelleme indiriliyor... {{percent}}%",
         "installUpdate": "Şimdi Yükle ve Yeniden Başlat",
