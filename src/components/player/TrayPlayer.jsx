@@ -138,13 +138,9 @@ export default function TrayPlayer() {
     const handleOpenMain = async () => {
         try {
             win.hide();
-            const { Window } = await import('@tauri-apps/api/window');
-            const mainWin = new Window('main');
-            if (mainWin) {
-                try { await mainWin.unminimize(); } catch (err) { }
-                await mainWin.show();
-                await mainWin.setFocus();
-            }
+            // Goes through the backend since the "main" window may have been destroyed
+            // by the idle-destroy poller (JS can't recreate a destroyed native window).
+            await invoke('show_main_window');
         } catch (e) {
             console.error("Failed to open main win:", e);
         }

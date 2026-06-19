@@ -934,6 +934,22 @@ pub fn maximize_browser_window(app: tauri::AppHandle) {
     }
 }
 
+/// Shows the "main" window, recreating it first if it was destroyed by the idle-destroy
+/// poller (see `setup::get_or_create_main_window`). JS can't recreate a destroyed native
+/// window on its own, so this must go through the backend.
+#[tauri::command]
+pub fn show_main_window(app: tauri::AppHandle) {
+    let window = crate::setup::get_or_create_main_window(&app);
+    #[cfg(target_os = "macos")]
+    {
+        use tauri::Manager;
+        let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+    }
+    let _ = window.unminimize();
+    let _ = window.show();
+    let _ = window.set_focus();
+}
+
 #[tauri::command]
 pub fn drag_window(app: tauri::AppHandle, label: String) {
     use tauri::Manager;
