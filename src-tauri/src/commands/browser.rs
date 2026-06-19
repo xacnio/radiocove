@@ -942,7 +942,6 @@ pub fn show_main_window(app: tauri::AppHandle) {
     let window = crate::setup::get_or_create_main_window(&app);
     #[cfg(target_os = "macos")]
     {
-        use tauri::Manager;
         let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
     }
     let _ = window.unminimize();
