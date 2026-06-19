@@ -83,9 +83,8 @@ pub async fn play(
                         }
                     }
                     // Refresh OS metadata
-                    if let Some(ms) = app_clone.try_state::<crate::services::media::MediaSession>()
-                    {
-                        if let Some(app_state) = app_clone.try_state::<AppState>() {
+                    if let Some(app_state) = app_clone.try_state::<AppState>() {
+                        if let Some(ms) = app_state.media_session.lock().unwrap().as_ref() {
                             if let Ok(ps) = app_state.inner.lock() {
                                 let artist = ps.station_name.as_deref().unwrap_or("Radiocove");
                                 let title_opt =

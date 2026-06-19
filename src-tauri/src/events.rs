@@ -2,7 +2,6 @@ use tauri::{AppHandle, Emitter, Manager};
 use tracing::{error, info};
 
 use crate::player::types::{PlaybackStatus, StreamMetadata};
-use crate::services::media::MediaSession;
 
 pub fn emit_status(app: &AppHandle, status: PlaybackStatus) {
     info!("Playback status changed: {:?}", status);
@@ -19,7 +18,9 @@ pub fn emit_status(app: &AppHandle, status: PlaybackStatus) {
     }
 
     // Update OS media transport
-    if let Some(ms) = app.try_state::<MediaSession>() {
+    let app_state = app.try_state::<crate::state::AppState>();
+    let media_guard = app_state.as_ref().map(|s| s.media_session.lock().unwrap());
+    if let Some(ms) = media_guard.as_ref().and_then(|g| g.as_ref()) {
         match status {
             PlaybackStatus::Playing => {
                 ms.set_playing();
@@ -110,7 +111,9 @@ pub fn emit_metadata(app: &AppHandle, metadata: StreamMetadata) {
     }
 
     // Update OS media transport with raw metadata
-    if let Some(ms) = app.try_state::<MediaSession>() {
+    let app_state = app.try_state::<crate::state::AppState>();
+    let media_guard = app_state.as_ref().map(|s| s.media_session.lock().unwrap());
+    if let Some(ms) = media_guard.as_ref().and_then(|g| g.as_ref()) {
         let mut station_name = "Radiocove".to_string();
         let mut cover_url = None;
         
