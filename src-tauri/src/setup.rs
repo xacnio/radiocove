@@ -449,6 +449,7 @@ pub fn attach_main_window_listeners(app: &tauri::AppHandle, window: &tauri::Webv
                         let _ = win.destroy();
                     }
                     tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
+                    crate::IS_QUITTING.store(true, std::sync::atomic::Ordering::SeqCst);
                     handle.exit(0);
                 });
                 api.prevent_close();
@@ -850,6 +851,7 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                         }
                         
                         tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
+                        crate::IS_QUITTING.store(true, std::sync::atomic::Ordering::SeqCst);
                         h.exit(0);
                     });
                 }
