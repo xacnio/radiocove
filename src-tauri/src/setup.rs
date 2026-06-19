@@ -308,10 +308,12 @@ pub fn attach_main_window_listeners(app: &tauri::AppHandle, window: &tauri::Webv
 
         // Create Start Menu shortcut with AppUserModelID
         // so that SMTC can resolve the app name from the shortcut
-        platform::shortcut::ensure_start_menu_shortcut(
-            "dev.xacnio.radiocove",
-            "Radiocove",
-        );
+        if !cfg!(debug_assertions) {
+            platform::shortcut::ensure_start_menu_shortcut(
+                "dev.xacnio.radiocove",
+                "Radiocove",
+            );
+        }
 
         if let Ok(hwnd) = window.hwnd() {
             let hwnd_ptr = hwnd.0;
