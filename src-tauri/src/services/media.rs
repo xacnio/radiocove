@@ -5,8 +5,11 @@
 
 use souvlaki::{MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, PlatformConfig};
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Manager};
 use tracing::{info, warn};
+
+use crate::commands::{media_next, media_previous, pause, resume, stop, toggle};
+use crate::state::AppState;
 
 /// Wraps souvlaki MediaControls. Created once at app startup.
 pub struct MediaSession {
@@ -39,39 +42,53 @@ impl MediaSession {
             }
         };
 
-        // Handle OS media key events → invoke Tauri commands
+        // Handle OS media key events by running playback commands directly against AppState.
+        // None of these touch a window — they must keep working after the "main" window is
+        // destroyed by the idle-destroy poller while audio keeps playing in the background.
         let handle = app_handle.clone();
         if let Err(e) = controls.attach(move |event| {
             let h = handle.clone();
             match event {
                 MediaControlEvent::Play => {
                     tauri::async_runtime::spawn(async move {
-                        let _ = h.emit("media-key", "play");
+                        if let Some(state) = h.try_state::<AppState>() {
+                            let _ = resume(h.clone(), state).await;
+                        }
                     });
                 }
                 MediaControlEvent::Pause => {
                     tauri::async_runtime::spawn(async move {
-                        let _ = h.emit("media-key", "pause");
+                        if let Some(state) = h.try_state::<AppState>() {
+                            let _ = pause(h.clone(), state).await;
+                        }
                     });
                 }
                 MediaControlEvent::Toggle => {
                     tauri::async_runtime::spawn(async move {
-                        let _ = h.emit("media-key", "toggle");
+                        if let Some(state) = h.try_state::<AppState>() {
+                            let _ = toggle(h.clone(), state).await;
+                        }
                     });
                 }
                 MediaControlEvent::Stop => {
                     tauri::async_runtime::spawn(async move {
-                        let _ = h.emit("media-key", "stop");
+                        if let Some(state) = h.try_state::<AppState>() {
+                            let _ = stop(h.clone(), state).await;
+                        }
                     });
                 }
                 MediaControlEvent::Next => {
                     tauri::async_runtime::spawn(async move {
-                        let _ = h.emit("media-key", "next");
+                        if let Some(state) = h.try_state::<AppState>() {
+                            let _ = media_next(h.clone(), state).await;
+                        }
                     });
                 }
                 MediaControlEvent::Previous => {
                     tauri::async_runtime::spawn(async move {
-                        let _ = h.emit("media-key", "previous");
+                        if let Some(state) = h.try_state::<AppState>() {
+                            let _ = media_previous(h.clone(), state).await;
+                        }
                     });
                 }
                 _ => {}

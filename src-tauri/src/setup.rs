@@ -316,13 +316,23 @@ pub fn attach_main_window_listeners(app: &tauri::AppHandle, window: &tauri::Webv
         }
 
         if let Ok(hwnd) = window.hwnd() {
-            let hwnd_ptr = hwnd.0;
-            let session = MediaSession::new(hwnd_ptr, app.clone());
-            if session.is_some() {
-                *app.state::<AppState>().media_session.lock().unwrap() = session;
-            }
-            // Add thumbnail toolbar buttons (prev/play-pause/next)
+            // Add thumbnail toolbar buttons (prev/play-pause/next) — plain Win32, safe on this thread.
             platform::thumbbar::setup_thumb_buttons(hwnd.0 as isize, app.clone());
+
+            // SMTC re-init (MediaSession::new) goes through WinRT and appears to hang when
+            // re-run on the same thread that's mid-event-loop (e.g. a tray click handler) —
+            // only startup, where this runs before the event loop is pumping, is reliably
+            // safe inline. Run it on its own thread so a hang there can no longer freeze the
+            // window-recreate flow (splash close, tray clicks) on every idle-destroy recreate.
+            let hwnd_isize = hwnd.0 as isize;
+            let app_clone = app.clone();
+            std::thread::spawn(move || {
+                let hwnd_ptr = hwnd_isize as *mut std::ffi::c_void;
+                let session = MediaSession::new(hwnd_ptr, app_clone.clone());
+                if session.is_some() {
+                    *app_clone.state::<AppState>().media_session.lock().unwrap() = session;
+                }
+            });
         }
 
         // Off-screen / wrong-size fix: Win+D with decorations:false causes the window to
@@ -766,6 +776,16 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let lang_ref = std::sync::Arc::new(std::sync::Mutex::new(initial_lang.clone()));
 
     create_tray_window(&app.handle().clone())?;
+    // Pre-warmed hidden at startup so the first tray click opens instantly. But `ever_shown`
+    // starting false means the idle-destroy poller would never reap it until the user opens
+    // it for real once — seed the tracker now so it's still destroyed after TRAY_GRACE if the
+    // user never opens the tray at all.
+    {
+        let state = app.state::<AppState>();
+        let mut t = state.tray_idle.lock().unwrap();
+        t.ever_shown = true;
+        t.hidden_since = Some(std::time::Instant::now());
+    }
 
     let _tray = TrayIconBuilder::with_id("main_tray")
         .icon(app.default_window_icon().unwrap().clone())
@@ -859,14 +879,20 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                 }
                 "show" => {
                     println!("TRAY: 'show' menu item clicked");
-                    let window = get_or_create_main_window(app);
-                    #[cfg(target_os = "macos")]
-                    {
-                        let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
-                    }
-                    let _ = window.unminimize();
-                    let _ = window.show();
-                    let _ = window.set_focus();
+                    // This handler runs on the main thread; get_or_create_main_window's
+                    // WebviewWindowBuilder::build() needs the main loop to process the
+                    // creation, so calling it inline here would deadlock. Run on its own thread.
+                    let app = app.clone();
+                    std::thread::spawn(move || {
+                        let window = get_or_create_main_window(&app);
+                        #[cfg(target_os = "macos")]
+                        {
+                            let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+                        }
+                        let _ = window.unminimize();
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    });
                 }
                 "play_pause" => {
                     let h = app.clone();
@@ -949,8 +975,13 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
 
-                    let app = tray.app_handle();
-                    if let Some(window) = get_or_create_tray_window(app) {
+                    // get_or_create_tray_window's WebviewWindowBuilder::build() needs the main
+                    // loop to process the creation; doing this inline here (this handler runs
+                    // on the main thread) blocks that loop for as long as the OS takes to spin
+                    // up the webview controller. Run the whole thing off-thread.
+                    let app = tray.app_handle().clone();
+                    std::thread::spawn(move || {
+                    if let Some(window) = get_or_create_tray_window(&app) {
                         if window.is_visible().unwrap_or(false) {
                             let _ = window.hide();
                         } else {
@@ -962,7 +993,7 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                                 // Identify which monitor the click happened on
                                 let monitor = app.monitor_from_point(position.x, position.y).ok().flatten()
                                     .or_else(|| window.primary_monitor().ok().flatten());
-                                
+
                                 if let Some(m) = monitor {
                                     let m_pos = m.position();
                                     let m_size = m.size();
@@ -970,10 +1001,10 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                                     let rel_y = position.y - m_pos.y as f64;
                                     let is_top = rel_y < (m_size.height as f64 / 2.0);
                                     let is_right = rel_x > (m_size.width as f64 / 2.0);
-                                    
+
                                     let margin_x = 12;
                                     let margin_y = 36;
-                                    
+
                                     let x = if is_right {
                                         m_pos.x + m_size.width as i32 - size.width as i32 - margin_x
                                     } else {
@@ -984,17 +1015,17 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                                     } else {
                                         m_pos.y + (m_size.height as i32) - (size.height as i32) - margin_y
                                     };
-                                    
+
                                     let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x, y }));
                                 }
                             }
                             #[cfg(not(target_os = "linux"))]
                             let _ = window.move_window(Position::TrayCenter);
-                            
+
                             let _ = window.show();
                             let _ = window.unminimize();
                             let _ = window.emit("tray-opened", ());
-                            
+
                             #[cfg(target_os = "windows")]
                             {
                                 let hwnd_val = if let Ok(hwnd) = window.hwnd() {
@@ -1002,7 +1033,7 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                                 } else {
                                     0
                                 };
-                                
+
                                 // 1. Give focus best-effort
                                 if hwnd_val != 0 {
                                     tauri::async_runtime::spawn(async move {
@@ -1011,7 +1042,7 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                                         unsafe { SetForegroundWindow(hwnd_val); }
                                     });
                                 }
-                                
+
                                 // 2. The ONLY bulletproof way on Windows for frameless tray apps:
                                 // Use a global mouse hook (WH_MOUSE_LL) to detect left/right clicks
                                 // that happen outside of our window.
@@ -1019,7 +1050,7 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                                 tauri::async_runtime::spawn(async move {
                                     // A small delay to avoid catching the initial tray icon click
                                     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-                                    
+
                                     // Start the hook logic on a dedicated background thread since
                                     // Windows hooks require a message loop or need to block.
                                     std::thread::spawn(move || {
@@ -1038,7 +1069,7 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                                             tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
                                             if !w.is_visible().unwrap_or(false) { break; }
                                             if w.is_focused().unwrap_or(false) { break; }
-                                            
+
                                             let _ = w.unminimize();
                                             let _ = w.set_focus();
                                             let _ = w.set_always_on_top(false);
@@ -1049,25 +1080,30 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                             }
                         }
                     }
+                    });
                 }
                 TrayIconEvent::DoubleClick {
                     button: MouseButton::Left,
                     ..
                 } => {
                     {
-                        let main = get_or_create_main_window(tray.app_handle());
+                        // Runs on the main thread; get_or_create_main_window's build() needs the
+                        // main loop to process the creation, so do this off-thread to avoid a deadlock.
+                        let app = tray.app_handle().clone();
+                        std::thread::spawn(move || {
+                        let main = get_or_create_main_window(&app);
                         let is_visible = main.is_visible().unwrap_or(false);
                         let is_minimized = main.is_minimized().unwrap_or(false);
 
                         if is_visible && !is_minimized {
                             let _ = main.hide();
                             #[cfg(target_os = "macos")]
-                            let _ = tray.app_handle().set_activation_policy(tauri::ActivationPolicy::Accessory);
+                            let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
                         } else {
                             #[cfg(target_os = "macos")]
                             {
                                 tracing::info!("Tray double-click: showing window, setting Regular policy");
-                                let _ = tray.app_handle().set_activation_policy(tauri::ActivationPolicy::Regular);
+                                let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
                             }
                             if is_minimized {
                                 let _ = main.unminimize();
@@ -1075,6 +1111,7 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                             let _ = main.show();
                             let _ = main.set_focus();
                         }
+                        });
                     }
                 }
                 _ => {}

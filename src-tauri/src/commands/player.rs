@@ -275,6 +275,68 @@ pub async fn resume(app: AppHandle, state: State<'_, AppState>) -> Result<(), Ap
     }
 }
 
+/// Plays/pauses/resumes based on current status. Used by the OS media-key "toggle" event
+/// and the tray play/pause button — both need playback control that works even when the
+/// "main" window has been destroyed by the idle-destroy poller, so this never touches a window.
+#[tauri::command]
+pub async fn toggle(app: AppHandle, state: State<'_, AppState>) -> Result<(), AppError> {
+    let (status, url, station_name, station_image) = {
+        let ps = state.inner.lock().unwrap();
+        (ps.status, ps.current_url.clone(), ps.station_name.clone(), ps.station_image.clone())
+    };
+
+    match status {
+        PlaybackStatus::Playing => pause(app, state).await,
+        PlaybackStatus::Paused => resume(app, state).await,
+        _ => {
+            if let Some(url) = url {
+                play(url, station_name, station_image, app, state).await
+            } else {
+                Ok(())
+            }
+        }
+    }
+}
+
+/// Skips to the next/previous saved station, navigating the same "all stations" list/order
+/// the frontend shows (sorted by `all_index`). Works without any window — used by global
+/// media-key shortcuts and the tray window's prev/next buttons, both of which must keep
+/// working after the "main" window is destroyed by the idle-destroy poller.
+#[tauri::command]
+pub async fn media_next(app: AppHandle, state: State<'_, AppState>) -> Result<(), AppError> {
+    media_adjacent(app, state, 1).await
+}
+
+#[tauri::command]
+pub async fn media_previous(app: AppHandle, state: State<'_, AppState>) -> Result<(), AppError> {
+    media_adjacent(app, state, -1).await
+}
+
+async fn media_adjacent(app: AppHandle, state: State<'_, AppState>, dir: i32) -> Result<(), AppError> {
+    let Some(current_url) = ({
+        let ps = state.inner.lock().unwrap();
+        ps.current_url.clone()
+    }) else {
+        return Ok(());
+    };
+
+    let mut list = super::get_custom_stations(app.clone()).await.unwrap_or_default();
+    if list.is_empty() {
+        return Ok(());
+    }
+    list.sort_by_key(|s| s.all_index);
+
+    let Some(idx) = list.iter().position(|s| s.url_resolved == current_url) else {
+        return Ok(());
+    };
+    let len = list.len() as i32;
+    let next_idx = (((idx as i32) + dir) % len + len) % len;
+    let target = &list[next_idx as usize];
+    let favicon = if target.favicon.is_empty() { None } else { Some(target.favicon.clone()) };
+
+    play(target.url_resolved.clone(), Some(target.name.clone()), favicon, app, state).await
+}
+
 #[tauri::command]
 pub async fn set_volume(
     level: f32,

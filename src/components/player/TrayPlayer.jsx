@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { listen, emitTo } from '@tauri-apps/api/event';
+import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward } from 'lucide-react';
 import { toAssetUrl } from '../../utils';
@@ -127,7 +127,7 @@ export default function TrayPlayer() {
                 await invoke('resume');
             } else {
                 try {
-                    await emitTo('main', 'media-key', 'toggle');
+                    await invoke('toggle');
                 } catch (e) {
                     console.error("Play from stopped failed:", e);
                 }
@@ -174,7 +174,7 @@ export default function TrayPlayer() {
 
     const handlePrev = async () => {
         try {
-            await emitTo('main', 'media-key', 'previous');
+            await invoke('media_previous');
         } catch (e) {
             console.error("Prev failed:", e);
         }
@@ -182,7 +182,7 @@ export default function TrayPlayer() {
 
     const handleNext = async () => {
         try {
-            await emitTo('main', 'media-key', 'next');
+            await invoke('media_next');
         } catch (e) {
             console.error("Next failed:", e);
         }

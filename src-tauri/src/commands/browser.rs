@@ -937,16 +937,22 @@ pub fn maximize_browser_window(app: tauri::AppHandle) {
 /// Shows the "main" window, recreating it first if it was destroyed by the idle-destroy
 /// poller (see `setup::get_or_create_main_window`). JS can't recreate a destroyed native
 /// window on its own, so this must go through the backend.
+///
+/// Sync Tauri commands run inline on the main thread; calling `WebviewWindowBuilder::build()`
+/// (inside `get_or_create_main_window`) from that same thread deadlocks, since window creation
+/// needs the main loop to process it. Running the whole thing on its own thread avoids that.
 #[tauri::command]
 pub fn show_main_window(app: tauri::AppHandle) {
-    let window = crate::setup::get_or_create_main_window(&app);
-    #[cfg(target_os = "macos")]
-    {
-        let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
-    }
-    let _ = window.unminimize();
-    let _ = window.show();
-    let _ = window.set_focus();
+    std::thread::spawn(move || {
+        let window = crate::setup::get_or_create_main_window(&app);
+        #[cfg(target_os = "macos")]
+        {
+            let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+        }
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    });
 }
 
 #[tauri::command]
