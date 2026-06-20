@@ -275,6 +275,13 @@ pub async fn resume(app: AppHandle, state: State<'_, AppState>) -> Result<(), Ap
     }
 }
 
+/// Called by the tray frontend once it has actually painted real content. Lets the tray-icon
+/// click handler wait for that instead of showing a blank/transparent window first.
+#[tauri::command]
+pub fn mark_tray_ready(state: State<'_, AppState>) {
+    state.tray_ready.store(true, std::sync::atomic::Ordering::SeqCst);
+}
+
 /// Plays/pauses/resumes based on current status. Used by the OS media-key "toggle" event
 /// and the tray play/pause button — both need playback control that works even when the
 /// "main" window has been destroyed by the idle-destroy poller, so this never touches a window.

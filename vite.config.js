@@ -2,6 +2,9 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -46,6 +49,12 @@ export default defineConfig({
     build: {
         chunkSizeWarningLimit: 1000,
         rollupOptions: {
+            // Tray window gets its own minimal entry (no i18n/station-list/full app bundle)
+            // so it's fast to (re)load after the idle-destroy poller tears it down.
+            input: {
+                main: resolve(__dirname, 'index.html'),
+                tray: resolve(__dirname, 'tray.html'),
+            },
             output: {
                 manualChunks(id) {
                     if (id.includes('node_modules')) {

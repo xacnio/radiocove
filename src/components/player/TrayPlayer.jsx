@@ -51,7 +51,15 @@ export default function TrayPlayer() {
         const root = document.getElementById('root');
         if (root) root.style.background = 'transparent';
 
-        syncStatus();
+        // Tell the backend once this paints for real, so the tray-icon click handler can
+        // wait for actual content instead of showing a blank/transparent window first.
+        syncStatus().finally(() => {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    invoke('mark_tray_ready').catch(() => { });
+                });
+            });
+        });
 
         const unlistenStatus = listen('playback-status', (event) => {
             setStatus(event.payload);
@@ -218,7 +226,9 @@ export default function TrayPlayer() {
             backgroundColor: 'rgba(21, 21, 25, 0.95)',
             border: '1px solid rgba(255, 255, 255, 0.08)',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-            borderRadius: '12px',
+            // No border-radius here on purpose — Windows' own DWM corner rounding on this
+            // borderless window already rounds the whole surface, and drawing our own radius
+            // on top of it clashed with that (mismatched curve at the corners).
             color: '#fff',
             width: '100%',
             height: '100%',

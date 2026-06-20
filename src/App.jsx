@@ -21,15 +21,9 @@ import { availableLanguages } from './i18n';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 
-import TrayPlayer from './components/player/TrayPlayer';
-
 const win = getCurrentWindow();
 
 export default function App() {
-    if (win.label === 'tray') {
-        return <TrayPlayer />;
-    }
-
     // Show the main window as soon as React is mounted
     useEffect(() => {
         win.show().catch(() => { });

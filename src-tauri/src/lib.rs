@@ -120,6 +120,7 @@ pub fn run() {
             commands::toggle,
             commands::media_next,
             commands::media_previous,
+            commands::mark_tray_ready,
             commands::set_volume,
             commands::get_status,
             commands::re_enrich,

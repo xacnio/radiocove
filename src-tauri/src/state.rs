@@ -1,3 +1,4 @@
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::time::Instant;
@@ -35,6 +36,10 @@ pub struct AppState {
     /// Last known good "main" window size/position, preserved across destroy/recreate
     /// cycles so the window reopens where the user left it.
     pub main_geometry: Mutex<Option<(tauri::PhysicalSize<u32>, tauri::PhysicalPosition<i32>)>>,
+    /// Set by the tray frontend once it has actually painted (see `mark_tray_ready`). Reset
+    /// to false whenever the "tray" window is (re)built, so the tray-icon click handler can
+    /// wait for real content instead of showing a blank/transparent window first.
+    pub tray_ready: AtomicBool,
 }
 
 pub struct PlayerState {
@@ -90,6 +95,7 @@ impl AppState {
             main_idle: Mutex::new(WindowIdleTracker::default()),
             tray_idle: Mutex::new(WindowIdleTracker::default()),
             main_geometry: Mutex::new(None),
+            tray_ready: AtomicBool::new(false),
         }
     }
 }

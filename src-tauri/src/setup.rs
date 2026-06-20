@@ -686,11 +686,15 @@ fn update_tray_menu(app: &tauri::AppHandle, lang: &str) -> Result<(), Box<dyn st
 /// (Linux/macOS). Called at startup, and again to recreate the window after the
 /// idle-destroy poller destroys it.
 pub fn create_tray_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewWindow> {
+    if let Some(state) = app.try_state::<AppState>() {
+        state.tray_ready.store(false, std::sync::atomic::Ordering::SeqCst);
+    }
+
     #[allow(unused_mut)]
     let mut builder = tauri::WebviewWindowBuilder::new(
         app,
         "tray",
-        tauri::WebviewUrl::App("index.html".into()),
+        tauri::WebviewUrl::App("tray.html".into()),
     )
     .title("Radiocove Mini Player")
     .inner_size(320.0, 88.0)
@@ -1021,6 +1025,20 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                             }
                             #[cfg(not(target_os = "linux"))]
                             let _ = window.move_window(Position::TrayCenter);
+
+                            // Wait briefly for the frontend to actually paint (see
+                            // `mark_tray_ready`) before showing, so a freshly (re)created
+                            // window doesn't flash blank/transparent first. Already-warm
+                            // windows have this set from their previous open already, so this
+                            // is a no-op for the common case.
+                            if let Some(state) = app.try_state::<AppState>() {
+                                for _ in 0..20 {
+                                    if state.tray_ready.load(std::sync::atomic::Ordering::SeqCst) {
+                                        break;
+                                    }
+                                    std::thread::sleep(std::time::Duration::from_millis(25));
+                                }
+                            }
 
                             let _ = window.show();
                             let _ = window.unminimize();
