@@ -92,6 +92,30 @@ pub async fn export_backup(options: BackupOptions, app: AppHandle) -> Result<(),
 
     let mut temp = tempfile::NamedTempFile::new().map_err(|e| AppError::Settings(e.to_string()))?;
 
+    // Image file names actually referenced by custom_stations.json's `favicon` field (covers
+    // both `cover_*.png` from batch-caching and `custom_*`/`custom_dl_*` from manual
+    // upload/download). Filtering by a fixed filename prefix missed most real favicons
+    // (e.g. all the batch-cached `cover_*` ones), leaving them blank after every restore.
+    let image_names: Vec<String> = if options.include_images {
+        std::fs::read(data_dir.join("custom_stations.json"))
+            .ok()
+            .and_then(|content| serde_json::from_slice::<Vec<stations::Station>>(&content).ok())
+            .map(|list| {
+                list.iter()
+                    .filter_map(|s| {
+                        s.favicon.starts_with("file:///").then(|| {
+                            PathBuf::from(s.favicon.replace("file:///", ""))
+                                .file_name()
+                                .map(|n| n.to_string_lossy().into_owned())
+                        })?
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
     {
         let mut zip = zip::ZipWriter::new(&mut temp);
         let options_zip = SimpleFileOptions::default()
@@ -105,16 +129,7 @@ pub async fn export_backup(options: BackupOptions, app: AppHandle) -> Result<(),
         if options.include_songs {
             total_items += 1;
         }
-        if options.include_images && cache_dir.exists() {
-            if let Ok(entries) = std::fs::read_dir(&cache_dir) {
-                total_items += entries
-                    .flatten()
-                    .filter(|e| {
-                        e.path().is_file() && e.file_name().to_string_lossy().starts_with("custom_")
-                    })
-                    .count();
-            }
-        }
+        total_items += image_names.len();
 
         let mut current_item = 0;
         let mut report_progress = |inc: u32, app: &AppHandle| {
@@ -130,17 +145,25 @@ pub async fn export_backup(options: BackupOptions, app: AppHandle) -> Result<(),
             let stations_p = data_dir.join("custom_stations.json");
             if stations_p.exists() {
                 let mut content = std::fs::read(&stations_p).unwrap_or_default();
-                if !options.include_images {
-                    if let Ok(mut list) = serde_json::from_slice::<Vec<stations::Station>>(&content)
-                    {
-                        for s in list.iter_mut() {
-                            if s.favicon.starts_with("file:///") {
-                                s.favicon = String::new();
-                            }
+                if let Ok(mut list) = serde_json::from_slice::<Vec<stations::Station>>(&content) {
+                    for s in list.iter_mut() {
+                        if s.favicon.starts_with("file:///") {
+                            // Strip down to just the filename — the full local path (which
+                            // leaks the exporting machine's username/folder layout) isn't
+                            // portable anyway; import only ever resolves by basename against
+                            // whatever cache/data dir it's restoring into.
+                            s.favicon = if options.include_images {
+                                PathBuf::from(s.favicon.replace("file:///", ""))
+                                    .file_name()
+                                    .map(|n| format!("file:///{}", n.to_string_lossy()))
+                                    .unwrap_or_default()
+                            } else {
+                                String::new()
+                            };
                         }
-                        if let Ok(updated) = serde_json::to_vec_pretty(&list) {
-                            content = updated;
-                        }
+                    }
+                    if let Ok(updated) = serde_json::to_vec_pretty(&list) {
+                        content = updated;
                     }
                 }
                 zip.start_file("custom_stations.json", options_zip)
@@ -164,26 +187,20 @@ pub async fn export_backup(options: BackupOptions, app: AppHandle) -> Result<(),
             report_progress(1, &app);
         }
 
-        // 3. Images folder
-        if options.include_images && cache_dir.exists() {
-            for entry in std::fs::read_dir(&cache_dir)
-                .map_err(|e| AppError::Settings(e.to_string()))?
-                .flatten()
-            {
-                let p = entry.path();
-                if p.is_file() {
-                    if let Some(name) = p.file_name().and_then(|n| n.to_str()) {
-                        if name.starts_with("custom_") {
-                            let content = std::fs::read(&p).unwrap_or_default();
-                            zip.start_file(format!("images/{}", name), options_zip)
-                                .map_err(|e| AppError::Settings(e.to_string()))?;
-                            zip.write_all(&content)
-                                .map_err(|e| AppError::Settings(e.to_string()))?;
-                            report_progress(1, &app);
-                        }
-                    }
-                }
+        // 3. Images folder — favicons can live in either cache_dir (batch-cached `cover_*`,
+        // URL-downloaded `custom_dl_*`) or data_dir (manually uploaded `custom_*`).
+        for name in &image_names {
+            let found = [cache_dir.join(name), data_dir.join(name)]
+                .into_iter()
+                .find(|p| p.is_file());
+            if let Some(p) = found {
+                let content = std::fs::read(&p).unwrap_or_default();
+                zip.start_file(format!("images/{}", name), options_zip)
+                    .map_err(|e| AppError::Settings(e.to_string()))?;
+                zip.write_all(&content)
+                    .map_err(|e| AppError::Settings(e.to_string()))?;
             }
+            report_progress(1, &app);
         }
 
         zip.finish()
@@ -308,7 +325,9 @@ pub async fn import_backup(
                     std::io::copy(&mut file, &mut outfile)
                         .map_err(|e| AppError::Settings(format!("Could not copy image: {}", e)))?;
                 }
-                let _ = std::fs::rename(&temp_target, &target);
+                if let Err(e) = std::fs::rename(&temp_target, &target) {
+                    tracing::warn!("Could not restore image {:?}: {}", target, e);
+                }
                 Ok(())
             } else {
                 Ok(())
