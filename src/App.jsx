@@ -113,6 +113,17 @@ function AppInner({ isPlayerHorizontal, setIsPlayerHorizontal, linkViewOpen, set
     const [skipAds, setSkipAds] = useState(() => localStorage.getItem('skip_ads') !== 'false');
     const [discordRpc, setDiscordRpc] = useState(() => localStorage.getItem('discord_rpc') === 'true');
 
+    // --- Idle-destroy windows (memory saver): hidden main/tray windows get torn down after
+    // sitting idle this long, and rebuilt on demand. Each can be disabled and retimed separately.
+    const [mainIdleDestroyEnabled, setMainIdleDestroyEnabled] = useState(() => localStorage.getItem('main_idle_destroy_enabled') !== 'false');
+    const [mainIdleGraceSecs, setMainIdleGraceSecs] = useState(() =>
+        parseInt(localStorage.getItem('main_idle_grace_secs') || '300', 10)
+    );
+    const [trayIdleDestroyEnabled, setTrayIdleDestroyEnabled] = useState(() => localStorage.getItem('tray_idle_destroy_enabled') !== 'false');
+    const [trayIdleGraceSecs, setTrayIdleGraceSecs] = useState(() =>
+        parseInt(localStorage.getItem('tray_idle_grace_secs') || '30', 10)
+    );
+
     useEffect(() => {
         localStorage.setItem('skip_ads', skipAds);
     }, [skipAds]);
@@ -120,6 +131,19 @@ function AppInner({ isPlayerHorizontal, setIsPlayerHorizontal, linkViewOpen, set
     useEffect(() => {
         localStorage.setItem('discord_rpc', discordRpc);
     }, [discordRpc]);
+
+    useEffect(() => {
+        localStorage.setItem('main_idle_destroy_enabled', mainIdleDestroyEnabled);
+        localStorage.setItem('main_idle_grace_secs', mainIdleGraceSecs);
+        localStorage.setItem('tray_idle_destroy_enabled', trayIdleDestroyEnabled);
+        localStorage.setItem('tray_idle_grace_secs', trayIdleGraceSecs);
+        invoke('save_window_idle_settings', {
+            mainIdleDestroyEnabled,
+            mainIdleGraceSecs,
+            trayIdleDestroyEnabled,
+            trayIdleGraceSecs,
+        }).catch(console.error);
+    }, [mainIdleDestroyEnabled, mainIdleGraceSecs, trayIdleDestroyEnabled, trayIdleGraceSecs]);
 
     useEffect(() => {
         localStorage.setItem('minimize_to_tray', minimizeToTray);
@@ -366,8 +390,6 @@ function AppInner({ isPlayerHorizontal, setIsPlayerHorizontal, linkViewOpen, set
     const [autoIdentifyCooldownFail, setAutoIdentifyCooldownFail] = useState(() =>
         Math.min(60, parseInt(localStorage.getItem('auto_identify_cooldown_fail') || '30', 10))
     );
-    const lastAutoIdentifyTimeRef = useRef(0);
-    const lastIdentifyStatusRef = useRef('success'); // 'success' | 'fail'
     const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
 
     // --- Panel resizing ---
@@ -543,6 +565,17 @@ function AppInner({ isPlayerHorizontal, setIsPlayerHorizontal, linkViewOpen, set
         localStorage.setItem('auto_identify_cooldown_fail', autoIdentifyCooldownFail);
     }, [autoIdentifyCooldownFail]);
 
+    // Auto-identify itself now runs entirely in the Rust backend (see
+    // setup::spawn_auto_identify_loop) so it keeps working with no window open. This just
+    // keeps the backend's copy of the settings in sync with what's shown here.
+    useEffect(() => {
+        invoke('save_auto_identify_settings', {
+            autoIdentify: isAutoIdentify,
+            autoIdentifyCooldownSuccess,
+            autoIdentifyCooldownFail,
+        }).catch(() => { });
+    }, [isAutoIdentify, autoIdentifyCooldownSuccess, autoIdentifyCooldownFail]);
+
     const identifyingRef = useRef(false);
     const lastFoundRef = useRef({ title: '', artist: '' });
 
@@ -574,7 +607,6 @@ function AppInner({ isPlayerHorizontal, setIsPlayerHorizontal, linkViewOpen, set
             if (!identifyingRef.current) return;
 
             if (found && !found._error) {
-                lastIdentifyStatusRef.current = 'success';
                 const isSameSong = found.title === lastFoundRef.current.title && found.artist === lastFoundRef.current.artist;
 
                 if (!isManual && isSameSong) {
@@ -623,7 +655,6 @@ function AppInner({ isPlayerHorizontal, setIsPlayerHorizontal, linkViewOpen, set
 
                 await invoke('save_identified_song', { song: songRecord }).catch(() => { });
             } else {
-                lastIdentifyStatusRef.current = 'fail';
                 // If it's manual, we definitely want to show failure.
                 // If it's auto-mode, we ONLY show failure if the modal wasn't already open.
                 // This prevents background-fail from wiping a previous success the user is looking at.
@@ -633,7 +664,6 @@ function AppInner({ isPlayerHorizontal, setIsPlayerHorizontal, linkViewOpen, set
                 }
             }
         } catch (e) {
-            lastIdentifyStatusRef.current = 'fail';
             if (!identifyingRef.current) return;
             console.error('Identification failed:', e);
             if (updateUI) {
@@ -642,9 +672,6 @@ function AppInner({ isPlayerHorizontal, setIsPlayerHorizontal, linkViewOpen, set
             }
         } finally {
             if (identifyingRef.current) {
-                if (!isManual) {
-                    lastAutoIdentifyTimeRef.current = Date.now();
-                }
                 setIsIdentifying(false);
                 identifyingRef.current = false;
                 setIdentifyPhase('idle');
@@ -652,28 +679,39 @@ function AppInner({ isPlayerHorizontal, setIsPlayerHorizontal, linkViewOpen, set
         }
     }, [status, activeStation, isIdentifying, showIdentifyModal]);
 
-    // Auto Identify Loop
+    // Auto-identify itself runs entirely in the Rust backend (setup::spawn_auto_identify_loop) —
+    // it keeps trying on its own cooldown schedule even with no window open, and already saves
+    // any match it finds. This just reacts to the result for UI purposes (toast + result modal)
+    // when a window happens to be open to see it.
     useEffect(() => {
-        if (isAutoIdentify && status === 'playing') {
-            const title = streamMetadata?.title || "(Unknown)";
+        const unlisten = listen('auto-identify-result', (event) => {
+            const { ok, song: found } = event.payload || {};
+            if (!ok || !found) return;
 
-            // Check cooldowns
-            const now = Date.now();
-            const cooldown = lastIdentifyStatusRef.current === 'success'
-                ? autoIdentifyCooldownSuccess * 1000
-                : autoIdentifyCooldownFail * 1000;
-
-            if (now - lastAutoIdentifyTimeRef.current < cooldown) {
+            const isSameSong = found.title === lastFoundRef.current.title && found.artist === lastFoundRef.current.artist;
+            if (isSameSong) {
+                if (!showIdentifyModal) setIdentifyResult(found);
                 return;
             }
+            lastFoundRef.current = { title: found.title || '', artist: found.artist || '' };
 
-            // Short delay to ensure buffer is full and stream is stable
-            const timer = setTimeout(() => {
-                handleIdentify(false);
-            }, 3000);
-            return () => clearTimeout(timer);
-        }
-    }, [activeUuid, streamMetadata?.title, isAutoIdentify, status, handleIdentify, autoIdentifyCooldownSuccess, autoIdentifyCooldownFail]);
+            if (!showIdentifyModal) {
+                setIdentifyResult(found);
+            }
+
+            notify({
+                type: 'shazam',
+                title: found.title,
+                artist: found.artist,
+                cover: found.cover,
+                onClick: () => {
+                    setIdentifyResult(found);
+                    setShowIdentifyModal(true);
+                }
+            });
+        });
+        return () => { unlisten.then(u => u()); };
+    }, [showIdentifyModal, notify]);
 
     // Reset some states when station changes
     useEffect(() => {
@@ -682,7 +720,6 @@ function AppInner({ isPlayerHorizontal, setIsPlayerHorizontal, linkViewOpen, set
         setEnrichedData(null);
         setIdentifyResult(null);
         lastFoundRef.current = { title: '', artist: '' };
-        lastAutoIdentifyTimeRef.current = 0; // Bypass cooldown for the first check on new station
 
         if (isAutoIdentify) {
             setIsIdentifying(false);
@@ -1321,8 +1358,6 @@ function AppInner({ isPlayerHorizontal, setIsPlayerHorizontal, linkViewOpen, set
         isNavigatingBackRef.current = false;
         setAutoIdentifyCooldownSuccess(60);
         setAutoIdentifyCooldownFail(30);
-        lastAutoIdentifyTimeRef.current = 0;
-        lastIdentifyStatusRef.current = 'success';
         // isSettingsLoaded, isResizing, currentBrowserUrl are transient/internal, not reset by user action
     }, []);
 
@@ -1444,6 +1479,14 @@ function AppInner({ isPlayerHorizontal, setIsPlayerHorizontal, linkViewOpen, set
                             setSkipAds={setSkipAds}
                             discordRpc={discordRpc}
                             setDiscordRpc={setDiscordRpc}
+                            mainIdleDestroyEnabled={mainIdleDestroyEnabled}
+                            setMainIdleDestroyEnabled={setMainIdleDestroyEnabled}
+                            mainIdleGraceSecs={mainIdleGraceSecs}
+                            setMainIdleGraceSecs={setMainIdleGraceSecs}
+                            trayIdleDestroyEnabled={trayIdleDestroyEnabled}
+                            setTrayIdleDestroyEnabled={setTrayIdleDestroyEnabled}
+                            trayIdleGraceSecs={trayIdleGraceSecs}
+                            setTrayIdleGraceSecs={setTrayIdleGraceSecs}
                         />
                     ) : (
                         <StationList

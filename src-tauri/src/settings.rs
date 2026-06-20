@@ -27,9 +27,30 @@ pub struct Settings {
     pub skip_ads: bool,
     #[serde(default)]
     pub discord_rpc: bool,
+    #[serde(default)]
+    pub auto_identify: bool,
+    #[serde(default = "default_auto_identify_cooldown_success")]
+    pub auto_identify_cooldown_success: u32,
+    #[serde(default = "default_auto_identify_cooldown_fail")]
+    pub auto_identify_cooldown_fail: u32,
+    /// Whether the hidden "main"/"tray" windows get destroyed after sitting idle, to free
+    /// the memory their WebView holds. Disabling keeps them alive (instant reopen, more RAM).
+    #[serde(default = "default_true")]
+    pub main_idle_destroy_enabled: bool,
+    #[serde(default = "default_main_idle_grace_secs")]
+    pub main_idle_grace_secs: u32,
+    #[serde(default = "default_true")]
+    pub tray_idle_destroy_enabled: bool,
+    #[serde(default = "default_tray_idle_grace_secs")]
+    pub tray_idle_grace_secs: u32,
 }
 
 fn default_skip_ads() -> bool { true }
+fn default_auto_identify_cooldown_success() -> u32 { 60 }
+fn default_auto_identify_cooldown_fail() -> u32 { 30 }
+fn default_true() -> bool { true }
+fn default_main_idle_grace_secs() -> u32 { 300 }
+fn default_tray_idle_grace_secs() -> u32 { 30 }
 
 
 impl Default for Settings {
@@ -46,6 +67,13 @@ impl Default for Settings {
             output_device: None,
             skip_ads: true,
             discord_rpc: false,
+            auto_identify: false,
+            auto_identify_cooldown_success: 60,
+            auto_identify_cooldown_fail: 30,
+            main_idle_destroy_enabled: true,
+            main_idle_grace_secs: 300,
+            tray_idle_destroy_enabled: true,
+            tray_idle_grace_secs: 30,
         }
     }
 }

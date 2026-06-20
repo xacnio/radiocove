@@ -56,7 +56,15 @@ export default function SettingsView({
     skipAds,
     setSkipAds,
     discordRpc,
-    setDiscordRpc
+    setDiscordRpc,
+    mainIdleDestroyEnabled,
+    setMainIdleDestroyEnabled,
+    mainIdleGraceSecs,
+    setMainIdleGraceSecs,
+    trayIdleDestroyEnabled,
+    setTrayIdleDestroyEnabled,
+    trayIdleGraceSecs,
+    setTrayIdleGraceSecs
 }) {
     const { t, i18n } = useTranslation();
     const { notify } = useNotification();
@@ -611,6 +619,87 @@ export default function SettingsView({
                                         <span>5s</span>
                                         <span>{t('settings.rare')}</span>
                                         <span>60s</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-1 pt-2">
+                            <h3 className="text-lg font-bold text-text-primary tracking-tight">{t('settings.windowMemorySaver')}</h3>
+                            <p className="text-xs text-text-muted">{t('settings.windowMemorySaverDesc')}</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {/* Main window idle-destroy */}
+                            <div className="bg-bg-secondary/40 border border-border/40 rounded-xl p-4 space-y-3">
+                                <div className="flex items-center justify-between gap-2">
+                                    <h4 className="text-[10px] font-bold text-text-muted uppercase tracking-tight truncate flex-1" title={t('settings.mainWindowIdle')}>
+                                        {t('settings.mainWindowIdle')}
+                                    </h4>
+                                    <button
+                                        onClick={() => setMainIdleDestroyEnabled(!mainIdleDestroyEnabled)}
+                                        className={`w-10 h-5 rounded-full transition-all relative p-1 cursor-pointer outline-none shrink-0
+                                            ${mainIdleDestroyEnabled ? 'bg-accent shadow-lg shadow-accent/20' : 'bg-bg-surface-active border border-border/50'}`}
+                                    >
+                                        <div className={`w-3 h-3 bg-white rounded-full transition-all duration-300 shadow-sm ${mainIdleDestroyEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                                    </button>
+                                </div>
+                                <div className={`space-y-1.5 ${mainIdleDestroyEnabled ? '' : 'opacity-40 pointer-events-none'}`}>
+                                    <div className="flex justify-between items-center gap-2">
+                                        <span className="text-[10px] text-text-muted">{t('settings.idleGracePeriod')}</span>
+                                        <div className="text-accent font-mono text-[10px] font-black bg-accent/10 px-2 py-0.5 rounded-md border border-accent/10 shrink-0">
+                                            {mainIdleGraceSecs}s
+                                        </div>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="60"
+                                        max="1800"
+                                        step="30"
+                                        value={mainIdleGraceSecs}
+                                        onChange={(e) => setMainIdleGraceSecs(parseInt(e.target.value))}
+                                        className="w-full h-1 bg-bg-surface-active rounded-full appearance-none cursor-pointer accent-accent"
+                                    />
+                                    <div className="flex justify-between text-[7px] text-text-muted/50 font-bold uppercase px-0.5">
+                                        <span>60s</span>
+                                        <span>30m</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Tray window idle-destroy */}
+                            <div className="bg-bg-secondary/40 border border-border/40 rounded-xl p-4 space-y-3">
+                                <div className="flex items-center justify-between gap-2">
+                                    <h4 className="text-[10px] font-bold text-text-muted uppercase tracking-tight truncate flex-1" title={t('settings.trayWindowIdle')}>
+                                        {t('settings.trayWindowIdle')}
+                                    </h4>
+                                    <button
+                                        onClick={() => setTrayIdleDestroyEnabled(!trayIdleDestroyEnabled)}
+                                        className={`w-10 h-5 rounded-full transition-all relative p-1 cursor-pointer outline-none shrink-0
+                                            ${trayIdleDestroyEnabled ? 'bg-accent shadow-lg shadow-accent/20' : 'bg-bg-surface-active border border-border/50'}`}
+                                    >
+                                        <div className={`w-3 h-3 bg-white rounded-full transition-all duration-300 shadow-sm ${trayIdleDestroyEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                                    </button>
+                                </div>
+                                <div className={`space-y-1.5 ${trayIdleDestroyEnabled ? '' : 'opacity-40 pointer-events-none'}`}>
+                                    <div className="flex justify-between items-center gap-2">
+                                        <span className="text-[10px] text-text-muted">{t('settings.idleGracePeriod')}</span>
+                                        <div className="text-accent font-mono text-[10px] font-black bg-accent/10 px-2 py-0.5 rounded-md border border-accent/10 shrink-0">
+                                            {trayIdleGraceSecs}s
+                                        </div>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="10"
+                                        max="300"
+                                        step="10"
+                                        value={trayIdleGraceSecs}
+                                        onChange={(e) => setTrayIdleGraceSecs(parseInt(e.target.value))}
+                                        className="w-full h-1 bg-bg-surface-active rounded-full appearance-none cursor-pointer accent-accent"
+                                    />
+                                    <div className="flex justify-between text-[7px] text-text-muted/50 font-bold uppercase px-0.5">
+                                        <span>10s</span>
+                                        <span>5m</span>
                                     </div>
                                 </div>
                             </div>

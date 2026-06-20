@@ -1,4 +1,4 @@
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicU32};
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::time::Instant;
@@ -15,6 +15,14 @@ use crate::services::media::MediaSession;
 pub struct WindowIdleTracker {
     pub ever_shown: bool,
     pub hidden_since: Option<Instant>,
+}
+
+/// Outcome of the last auto-identify attempt, used to pick which cooldown applies next.
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+pub enum IdentifyOutcome {
+    #[default]
+    Success,
+    Fail,
 }
 
 pub struct AppState {
@@ -40,6 +48,17 @@ pub struct AppState {
     /// to false whenever the "tray" window is (re)built, so the tray-icon click handler can
     /// wait for real content instead of showing a blank/transparent window first.
     pub tray_ready: AtomicBool,
+    /// When the auto-identify background loop last actually ran an attempt (manual
+    /// "Identify Now" clicks don't touch this). `None` means "never — go right away".
+    pub last_identify_attempt: Mutex<Option<Instant>>,
+    /// Outcome of that last attempt, used to pick the success/fail cooldown for the next one.
+    pub last_identify_status: Mutex<IdentifyOutcome>,
+    /// Live copies of the idle-destroy settings (see `setup::spawn_idle_window_destroyer`),
+    /// so toggling them in Settings takes effect immediately without a restart.
+    pub main_idle_destroy_enabled: AtomicBool,
+    pub main_idle_grace_secs: AtomicU32,
+    pub tray_idle_destroy_enabled: AtomicBool,
+    pub tray_idle_grace_secs: AtomicU32,
 }
 
 pub struct PlayerState {
@@ -58,10 +77,24 @@ pub struct PlayerState {
     pub close_to_tray: bool,
     pub output_device: Option<String>,
     pub skip_ads: bool,
+    pub auto_identify: bool,
+    pub auto_identify_cooldown_success: u32,
+    pub auto_identify_cooldown_fail: u32,
 }
 
 impl PlayerState {
-    pub fn new(volume: f32, last_url: Option<String>, minimize_to_tray: bool, close_to_tray: bool, output_device: Option<String>, skip_ads: bool) -> Self {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        volume: f32,
+        last_url: Option<String>,
+        minimize_to_tray: bool,
+        close_to_tray: bool,
+        output_device: Option<String>,
+        skip_ads: bool,
+        auto_identify: bool,
+        auto_identify_cooldown_success: u32,
+        auto_identify_cooldown_fail: u32,
+    ) -> Self {
         Self {
             status: PlaybackStatus::Stopped,
             current_url: last_url,
@@ -78,14 +111,43 @@ impl PlayerState {
             close_to_tray,
             output_device,
             skip_ads,
+            auto_identify,
+            auto_identify_cooldown_success,
+            auto_identify_cooldown_fail,
         }
     }
 }
 
 impl AppState {
-    pub fn new(volume: f32, last_url: Option<String>, minimize_to_tray: bool, close_to_tray: bool, output_device: Option<String>, skip_ads: bool, discord_enabled: bool) -> Self {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        volume: f32,
+        last_url: Option<String>,
+        minimize_to_tray: bool,
+        close_to_tray: bool,
+        output_device: Option<String>,
+        skip_ads: bool,
+        discord_enabled: bool,
+        auto_identify: bool,
+        auto_identify_cooldown_success: u32,
+        auto_identify_cooldown_fail: u32,
+        main_idle_destroy_enabled: bool,
+        main_idle_grace_secs: u32,
+        tray_idle_destroy_enabled: bool,
+        tray_idle_grace_secs: u32,
+    ) -> Self {
         Self {
-            inner: Arc::new(Mutex::new(PlayerState::new(volume, last_url, minimize_to_tray, close_to_tray, output_device, skip_ads))),
+            inner: Arc::new(Mutex::new(PlayerState::new(
+                volume,
+                last_url,
+                minimize_to_tray,
+                close_to_tray,
+                output_device,
+                skip_ads,
+                auto_identify,
+                auto_identify_cooldown_success,
+                auto_identify_cooldown_fail,
+            ))),
             proxy_port: 0,
             play_lock: tokio::sync::Mutex::new(()),
             hls_session_cache: Arc::new(Mutex::new(HashMap::new())),
@@ -96,6 +158,12 @@ impl AppState {
             tray_idle: Mutex::new(WindowIdleTracker::default()),
             main_geometry: Mutex::new(None),
             tray_ready: AtomicBool::new(false),
+            last_identify_attempt: Mutex::new(None),
+            last_identify_status: Mutex::new(IdentifyOutcome::default()),
+            main_idle_destroy_enabled: AtomicBool::new(main_idle_destroy_enabled),
+            main_idle_grace_secs: AtomicU32::new(main_idle_grace_secs),
+            tray_idle_destroy_enabled: AtomicBool::new(tray_idle_destroy_enabled),
+            tray_idle_grace_secs: AtomicU32::new(tray_idle_grace_secs),
         }
     }
 }

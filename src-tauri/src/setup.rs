@@ -1181,9 +1181,10 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
 /// Destroys hidden "main"/"tray" windows after their grace period to free memory.
 /// `ever_shown` prevents destroying "tray" before it's been opened even once.
 /// The app keeps running with zero windows open (see RunEvent::ExitRequested in lib.rs).
+/// Both the on/off switch and the grace period are user-configurable (Settings → Advanced)
+/// and read live from `AppState` every tick, see `commands::save_window_idle_settings`.
 fn spawn_idle_window_destroyer(app: tauri::AppHandle) {
-    const MAIN_GRACE: std::time::Duration = std::time::Duration::from_secs(300); // 5 minutes
-    const TRAY_GRACE: std::time::Duration = std::time::Duration::from_secs(30);
+    use std::sync::atomic::Ordering;
 
     tauri::async_runtime::spawn(async move {
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
@@ -1191,8 +1192,100 @@ fn spawn_idle_window_destroyer(app: tauri::AppHandle) {
             interval.tick().await;
             let Some(state) = app.try_state::<AppState>() else { continue };
 
-            check_idle_window(&app, "main", &state.main_idle, MAIN_GRACE);
-            check_idle_window(&app, "tray", &state.tray_idle, TRAY_GRACE);
+            if state.main_idle_destroy_enabled.load(Ordering::Relaxed) {
+                let grace = std::time::Duration::from_secs(state.main_idle_grace_secs.load(Ordering::Relaxed) as u64);
+                check_idle_window(&app, "main", &state.main_idle, grace);
+            }
+            if state.tray_idle_destroy_enabled.load(Ordering::Relaxed) {
+                let grace = std::time::Duration::from_secs(state.tray_idle_grace_secs.load(Ordering::Relaxed) as u64);
+                check_idle_window(&app, "tray", &state.tray_idle, grace);
+            }
+        }
+    });
+}
+
+/// Drives auto-identify entirely in the backend so it keeps working with no window open
+/// (it used to live in a React effect in App.jsx, which died whenever that component
+/// unmounted — e.g. once the idle-destroy poller above tears down "main").
+pub fn spawn_auto_identify_loop(app: tauri::AppHandle) {
+    use tauri::Emitter;
+    tauri::async_runtime::spawn(async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            let Some(state) = app.try_state::<AppState>() else { continue };
+
+            let (enabled, cooldown_success, cooldown_fail, is_playing) = {
+                let ps = state.inner.lock().unwrap();
+                (
+                    ps.auto_identify,
+                    ps.auto_identify_cooldown_success,
+                    ps.auto_identify_cooldown_fail,
+                    ps.status == crate::player::types::PlaybackStatus::Playing,
+                )
+            };
+
+            if !enabled || !is_playing {
+                continue;
+            }
+
+            let cooldown_secs = match *state.last_identify_status.lock().unwrap() {
+                crate::state::IdentifyOutcome::Success => cooldown_success,
+                crate::state::IdentifyOutcome::Fail => cooldown_fail,
+            };
+            let due = match *state.last_identify_attempt.lock().unwrap() {
+                None => true,
+                Some(t) => t.elapsed() >= std::time::Duration::from_secs(cooldown_secs as u64),
+            };
+            if !due {
+                continue;
+            }
+
+            let Some(state) = app.try_state::<AppState>() else { continue };
+            let result = crate::commands::identify_song(app.clone(), state).await;
+
+            let Some(state) = app.try_state::<AppState>() else { continue };
+            match result {
+                Ok(Some(found)) => {
+                    // A manual "Identify Now" click is already in flight; don't count this
+                    // tick as our attempt, just retry next tick once it's done.
+                    if found.get("_error_type").and_then(|v| v.as_str()) == Some("already_running") {
+                        continue;
+                    }
+
+                    *state.last_identify_attempt.lock().unwrap() = Some(std::time::Instant::now());
+
+                    if found.get("_error").is_some() {
+                        *state.last_identify_status.lock().unwrap() = crate::state::IdentifyOutcome::Fail;
+                        let _ = app.emit("auto-identify-result", serde_json::json!({ "ok": false }));
+                    } else {
+                        *state.last_identify_status.lock().unwrap() = crate::state::IdentifyOutcome::Success;
+
+                        let station_name = {
+                            let ps = state.inner.lock().unwrap();
+                            ps.station_name.clone().unwrap_or_else(|| "Unknown Radio".to_string())
+                        };
+                        let song_link = found.get("song_link").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                        let song_record = serde_json::json!({
+                            "title": found.get("title").and_then(|v| v.as_str()).unwrap_or(""),
+                            "artist": found.get("artist").and_then(|v| v.as_str()).unwrap_or(""),
+                            "album": found.get("album").and_then(|v| v.as_str()).unwrap_or(""),
+                            "release_date": found.get("release_date").and_then(|v| v.as_str()).unwrap_or(""),
+                            "cover": found.get("cover").and_then(|v| v.as_str()).unwrap_or(""),
+                            "song_link": song_link.clone(),
+                            "station_name": station_name,
+                            "found_at": chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+                            "source": "Shazam",
+                            "sources": [{ "name": "Shazam", "link": song_link }],
+                        });
+                        let _ = crate::commands::save_identified_song(app.clone(), song_record);
+                        let _ = app.emit("auto-identify-result", serde_json::json!({ "ok": true, "song": found }));
+                    }
+                }
+                _ => {
+                    *state.last_identify_attempt.lock().unwrap() = Some(std::time::Instant::now());
+                    *state.last_identify_status.lock().unwrap() = crate::state::IdentifyOutcome::Fail;
+                }
+            }
         }
     });
 }

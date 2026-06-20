@@ -68,7 +68,14 @@ pub fn run() {
                 settings.close_to_tray,
                 settings.output_device,
                 settings.skip_ads,
-                settings.discord_rpc
+                settings.discord_rpc,
+                settings.auto_identify,
+                settings.auto_identify_cooldown_success,
+                settings.auto_identify_cooldown_fail,
+                settings.main_idle_destroy_enabled,
+                settings.main_idle_grace_secs,
+                settings.tray_idle_destroy_enabled,
+                settings.tray_idle_grace_secs,
             );
             state.proxy_port = port;
             app.manage(state);
@@ -90,6 +97,9 @@ pub fn run() {
             if let Err(e) = setup::setup_tray(app) {
                 tracing::error!("Failed to initialize tray: {}", e);
             }
+
+            // 8b. AUTO-IDENTIFY BACKGROUND LOOP (runs with no window open)
+            setup::spawn_auto_identify_loop(app.handle().clone());
 
             // 9. AUDIO DEVICE MONITOR (Windows only)
             #[cfg(target_os = "windows")]
@@ -121,6 +131,8 @@ pub fn run() {
             commands::media_next,
             commands::media_previous,
             commands::mark_tray_ready,
+            commands::save_auto_identify_settings,
+            commands::save_window_idle_settings,
             commands::set_volume,
             commands::get_status,
             commands::re_enrich,

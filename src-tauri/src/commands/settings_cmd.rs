@@ -122,6 +122,67 @@ pub fn save_skip_ads(app: AppHandle, skip_ads: bool) -> Result<(), AppError> {
 }
 
 #[tauri::command]
+pub fn save_auto_identify_settings(
+    app: AppHandle,
+    auto_identify: bool,
+    auto_identify_cooldown_success: u32,
+    auto_identify_cooldown_fail: u32,
+) -> Result<(), AppError> {
+    let dir = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| std::path::PathBuf::from("."));
+    let mut settings = Settings::load(&dir);
+
+    settings.auto_identify = auto_identify;
+    settings.auto_identify_cooldown_success = auto_identify_cooldown_success;
+    settings.auto_identify_cooldown_fail = auto_identify_cooldown_fail;
+
+    // Update runtime state too, so the background auto-identify loop (setup::spawn_auto_identify_loop)
+    // picks up the change immediately without needing a restart.
+    let state = app.state::<crate::state::AppState>();
+    {
+        let mut inner = state.inner.lock().unwrap();
+        inner.auto_identify = auto_identify;
+        inner.auto_identify_cooldown_success = auto_identify_cooldown_success;
+        inner.auto_identify_cooldown_fail = auto_identify_cooldown_fail;
+    }
+
+    settings.save(&dir)
+}
+
+#[tauri::command]
+pub fn save_window_idle_settings(
+    app: AppHandle,
+    main_idle_destroy_enabled: bool,
+    main_idle_grace_secs: u32,
+    tray_idle_destroy_enabled: bool,
+    tray_idle_grace_secs: u32,
+) -> Result<(), AppError> {
+    let dir = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| std::path::PathBuf::from("."));
+    let mut settings = Settings::load(&dir);
+
+    settings.main_idle_destroy_enabled = main_idle_destroy_enabled;
+    settings.main_idle_grace_secs = main_idle_grace_secs;
+    settings.tray_idle_destroy_enabled = tray_idle_destroy_enabled;
+    settings.tray_idle_grace_secs = tray_idle_grace_secs;
+
+    // Update runtime state too, so setup::spawn_idle_window_destroyer picks up the
+    // change on its next tick without needing a restart.
+    use std::sync::atomic::Ordering;
+    let state = app.state::<crate::state::AppState>();
+    state.main_idle_destroy_enabled.store(main_idle_destroy_enabled, Ordering::Relaxed);
+    state.main_idle_grace_secs.store(main_idle_grace_secs, Ordering::Relaxed);
+    state.tray_idle_destroy_enabled.store(tray_idle_destroy_enabled, Ordering::Relaxed);
+    state.tray_idle_grace_secs.store(tray_idle_grace_secs, Ordering::Relaxed);
+
+    settings.save(&dir)
+}
+
+#[tauri::command]
 pub fn get_audio_devices() -> Result<Vec<String>, AppError> {
     use rodio::cpal::traits::{DeviceTrait, HostTrait};
 

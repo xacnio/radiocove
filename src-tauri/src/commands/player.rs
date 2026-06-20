@@ -60,6 +60,10 @@ pub async fn play(
         h
     };
 
+    // New station: let the auto-identify loop try again right away instead of waiting
+    // out whatever cooldown was left over from the previous station.
+    *state.last_identify_attempt.lock().unwrap() = None;
+
     // Emit connecting BEFORE stopping old player, so SMTC updates immediately
     events::emit_status(&app, PlaybackStatus::Connecting);
 
