@@ -2,6 +2,8 @@ node_modules/
 dist/
 target/
 website/src/data/*.json
+scripts/msix/.cert/
+*.msix
 *.log
 updater.key
 updater.key.pub
