@@ -1,0 +1,48 @@
+@import "tailwindcss";
+@import "@fontsource-variable/manrope";
+
+@theme {
+  --font-sans: 'Manrope Variable', 'Manrope', system-ui, sans-serif;
+
+  /* Same accent green as the desktop app's default theme (src/index.css) */
+  --color-accent-200: #bdf5d1;
+  --color-accent-300: #83ecaa;
+  --color-accent-400: #38e076;
+  --color-accent-500: #1db954;
+  --color-accent-600: #179646;
+  --color-accent-700: #137737;
+
+  --color-stone-950: #0f0f0f;
+  --color-stone-900: #161616;
+  --color-stone-800: #222222;
+  --color-stone-700: #2d2d2d;
+  --color-stone-600: #3d3d3d;
+  --color-stone-500: #666666;
+  --color-stone-400: #999999;
+  --color-stone-300: #c8c8c8;
+  --color-stone-200: #e3e3e3;
+  --color-stone-100: #f5f5f5;
+  --color-stone-50:  #fafafa;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  margin: 0;
+  background: #0f0f0f;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3d3d3d transparent;
+}
+
+::selection {
+  background: #1db954;
+  color: #0f0f0f;
+}

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://xacnio.github.io/radiocove/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://xacnio.github.io/radiocove/" />
+    <xhtml:link rel="alternate" hreflang="tr" href="https://xacnio.github.io/radiocove/tr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://xacnio.github.io/radiocove/de/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://xacnio.github.io/radiocove/" />
+  </url>
+  <url>
+    <loc>https://xacnio.github.io/radiocove/tr/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://xacnio.github.io/radiocove/" />
+    <xhtml:link rel="alternate" hreflang="tr" href="https://xacnio.github.io/radiocove/tr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://xacnio.github.io/radiocove/de/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://xacnio.github.io/radiocove/" />
+  </url>
+  <url>
+    <loc>https://xacnio.github.io/radiocove/de/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://xacnio.github.io/radiocove/" />
+    <xhtml:link rel="alternate" hreflang="tr" href="https://xacnio.github.io/radiocove/tr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://xacnio.github.io/radiocove/de/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://xacnio.github.io/radiocove/" />
+  </url>
+  <url>
+    <loc>https://xacnio.github.io/radiocove/privacy.html</loc>
+  </url>
+  <url>
+    <loc>https://xacnio.github.io/radiocove/license.html</loc>
+  </url>
+</urlset>

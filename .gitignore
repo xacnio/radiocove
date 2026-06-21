@@ -1,6 +1,7 @@
 node_modules/
 dist/
 target/
+website/src/data/*.json
 *.log
 updater.key
 updater.key.pub
