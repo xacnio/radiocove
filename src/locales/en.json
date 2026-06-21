@@ -219,7 +219,8 @@
         "skipAdsDesc": "Automatically skip ad segments in HLS (m3u8) streams.",
         "skipAdsWarning": "Note: May not work for every radio station.",
         "discordRpc": "Discord Rich Presence",
-        "discordRpcDesc": "Show what you're listening to on Discord"
+        "discordRpcDesc": "Show what you're listening to on Discord",
+        "website": "Website"
     },
     "ctx": {
         "play": "Play",

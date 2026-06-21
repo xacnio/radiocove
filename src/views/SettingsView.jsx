@@ -934,6 +934,12 @@ export default function SettingsView({
                                 >
                                     <Github size={16} /> GitHub <ExternalLink size={12} className="opacity-40 group-hover:opacity-100 transition-opacity" />
                                 </button>
+                                <button
+                                    onClick={() => invoke('open_browser_url', { url: 'https://xacnio.github.io/radiocove/' })}
+                                    className="px-5 py-2.5 rounded-xl bg-bg-surface/50 hover:bg-bg-surface-hover transition-all text-text-primary border border-border/30 flex items-center gap-2 font-bold text-xs group"
+                                >
+                                    <Globe size={16} /> {t('settings.website')} <ExternalLink size={12} className="opacity-40 group-hover:opacity-100 transition-opacity" />
+                                </button>
                                 {!isPackagedInstall && (
                                     <button
                                         onClick={async () => {

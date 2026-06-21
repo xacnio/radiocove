@@ -219,7 +219,8 @@
         "skipAdsDesc": "HLS (m3u8) yayınlarındaki reklam bölümlerini otomatik olarak atlar.",
         "skipAdsWarning": "Not: Her radyo istasyonu için çalışmayabilir.",
         "discordRpc": "Discord Rich Presence",
-        "discordRpcDesc": "Discord'da ne dinlediğinizi gösterin"
+        "discordRpcDesc": "Discord'da ne dinlediğinizi gösterin",
+        "website": "Web Sitesi"
     },
     "ctx": {
         "play": "Çal",
