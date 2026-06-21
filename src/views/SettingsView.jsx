@@ -7,17 +7,15 @@ import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { useNotification } from '../contexts/NotificationProvider';
 import { availableLanguages } from '../i18n';
+import { extractWhatsNew } from '../utils';
 import ReactMarkdown from 'react-markdown';
 
 // Clean markdown payload from CI artifacts table
 const cleanMarkdown = (text) => {
     if (!text) return '';
 
-    // Attempt to extract only the "What's New" section
-    const whatsNewMatch = text.match(/### 📝 What's New\s+([\s\S]*?)(?=\n---|###|$)/);
-    if (whatsNewMatch && whatsNewMatch[1]) {
-        return whatsNewMatch[1].trim();
-    }
+    const whatsNew = extractWhatsNew(text);
+    if (whatsNew) return whatsNew;
 
     // Fallback: strip "Download Links" and CI footer
     let result = text.replace(/### 📦 Download Links[\s\S]*?(?=\n### |$)/, '');

@@ -432,5 +432,10 @@
         "miniPlayer": "Mini Player'ı Göster",
         "mainWindow": "Ana Pencereyi Göster",
         "quit": "Çıkış"
+    },
+    "whatsNew": {
+        "title": "Yenilikler",
+        "subtitle": "Radiocove'u son açışından bu yana neler değişti (v{{version}})",
+        "gotIt": "Anladım"
     }
 }

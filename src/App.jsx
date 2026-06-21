@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getVersion } from '@tauri-apps/api/app';
 import { Edit, Trash2, PenLine, Globe, Settings, Search, X, Music, ExternalLink, Radio, Heart, Tags, MapPin, Languages, Image, Zap, Check } from 'lucide-react';
 import TitleBar from './components/common/TitleBar';
 import Sidebar from './components/layout/Sidebar';
@@ -11,9 +12,10 @@ import EditStationModal from './components/stations/EditStationModal';
 import SetupScreen from './views/SetupScreen';
 import ApiSearchModal from './components/stations/ApiSearchModal';
 import ConfirmModal from './components/common/ConfirmModal';
+import WhatsNewModal from './components/common/WhatsNewModal';
 import IdentifiedSongsList from './components/stations/IdentifiedSongsList';
 import SettingsView from './views/SettingsView';
-import { toAssetUrl } from './utils';
+import { toAssetUrl, compareVersions } from './utils';
 import { FastAverageColor } from 'fast-average-color';
 import { NotificationProvider, useNotification } from './contexts/NotificationProvider';
 import { useTranslation } from 'react-i18next';
@@ -282,6 +284,50 @@ function AppInner({ isPlayerHorizontal, setIsPlayerHorizontal, linkViewOpen, set
         const timerId = setTimeout(initAutoUpdate, 100);
         return () => clearTimeout(timerId);
     }, [notify, t, setTab]);
+
+    // --- "What's New" Check ---
+    // Compares the running version against the last one this install showed a changelog for.
+    // Works regardless of how the update arrived (in-app updater, Microsoft Store, manual install),
+    // and aggregates every release skipped in between, not just the latest one.
+    const [whatsNewState, setWhatsNewState] = useState(null); // { currentVersion, releases }
+    useEffect(() => {
+        const STORAGE_KEY = 'rx_last_seen_version';
+        const checkWhatsNew = async () => {
+            try {
+                const currentVersion = await getVersion();
+                const lastSeen = localStorage.getItem(STORAGE_KEY);
+
+                if (!lastSeen) {
+                    localStorage.setItem(STORAGE_KEY, currentVersion);
+                    return;
+                }
+                if (compareVersions(currentVersion, lastSeen) <= 0) return;
+
+                const res = await fetch('https://api.github.com/repos/xacnio/radiocove/releases');
+                const releases = await res.json();
+                if (!Array.isArray(releases)) throw new Error('Unexpected releases response');
+
+                const newReleases = releases
+                    .filter((r) => !r.draft && !r.prerelease)
+                    .filter((r) => {
+                        const tag = r.tag_name.replace(/^v/, '');
+                        return compareVersions(tag, lastSeen) > 0 && compareVersions(tag, currentVersion) <= 0;
+                    })
+                    .sort((a, b) => compareVersions(b.tag_name.replace(/^v/, ''), a.tag_name.replace(/^v/, '')));
+
+                if (newReleases.length > 0) {
+                    setWhatsNewState({ currentVersion, releases: newReleases });
+                }
+                localStorage.setItem(STORAGE_KEY, currentVersion);
+            } catch (e) {
+                console.error('Whats new check failed', e);
+                // Leave the stored version untouched so this retries on next launch.
+            }
+        };
+
+        const timerId = setTimeout(checkWhatsNew, 800);
+        return () => clearTimeout(timerId);
+    }, []);
 
     // --- Audio Device Change Listener (Windows only) ---
     const lastDeviceChangeRef = useRef(null);
@@ -1836,6 +1882,14 @@ function AppInner({ isPlayerHorizontal, setIsPlayerHorizontal, linkViewOpen, set
                 neutralText={confirmDialog.neutralText}
                 onNeutral={confirmDialog.onNeutral}
             />
+
+            {whatsNewState && (
+                <WhatsNewModal
+                    releases={whatsNewState.releases}
+                    currentVersion={whatsNewState.currentVersion}
+                    onClose={() => setWhatsNewState(null)}
+                />
+            )}
 
             {showLanguageSetup && (
                 <div className="fixed inset-0 top-[38px] bg-bg-primary z-[10000] flex flex-col items-center justify-center p-4" data-tauri-drag-region>

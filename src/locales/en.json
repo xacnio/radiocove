@@ -432,5 +432,10 @@
         "miniPlayer": "Show Mini Player",
         "mainWindow": "Show Main Window",
         "quit": "Quit"
+    },
+    "whatsNew": {
+        "title": "What's New",
+        "subtitle": "Here's what changed since you last opened Radiocove (v{{version}})",
+        "gotIt": "Got it"
     }
 }

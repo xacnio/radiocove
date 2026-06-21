@@ -432,5 +432,10 @@
         "miniPlayer": "Mini Player anzeigen",
         "mainWindow": "Hauptfenster anzeigen",
         "quit": "Beenden"
+    },
+    "whatsNew": {
+        "title": "Neuigkeiten",
+        "subtitle": "Das hat sich geändert, seit du Radiocove zuletzt geöffnet hast (v{{version}})",
+        "gotIt": "Verstanden"
     }
 }
