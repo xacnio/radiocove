@@ -5,6 +5,8 @@
 
   [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
   [![Version](https://img.shields.io/badge/version-1.3.0-blue)](https://github.com/xacnio/radiocove/releases)
+
+  [<img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get it from Microsoft Store" width="200"/>](https://apps.microsoft.com/detail/9NKTF92G6XFQ)
 </div>
 
 ---
@@ -13,6 +15,25 @@ Radiocove is a desktop radio player. You can browse stations, add your own strea
 
 > [!IMPORTANT]
 > Radiocove doesn't host or broadcast anything. It's just a player. You add the streams, we play them.
+
+## Install
+
+Radiocove is free and open-source. You can purchase it on the Microsoft Store to support the developer, or get it for free from GitHub.
+
+> [!NOTE]
+> On Windows, GitHub builds aren't signed with a paid certificate and may get flagged by antivirus software. Installing from the Microsoft Store is recommended.
+
+Grab the latest build from [Releases](https://github.com/xacnio/radiocove/releases/latest), or use a platform store/link below:
+
+| Platform | Architecture | Formats | Store / Link |
+| :--- | :--- | :--- | :--- |
+| Windows (10+) | x64 | `.exe` installer, `.msi` | [Microsoft Store](https://apps.microsoft.com/detail/9NKTF92G6XFQ) / [Releases](https://github.com/xacnio/radiocove/releases/latest) |
+| Windows (10+) | ARM64 | `.exe` installer | [Microsoft Store](https://apps.microsoft.com/detail/9NKTF92G6XFQ) / [Releases](https://github.com/xacnio/radiocove/releases/latest) |
+| macOS (11+) | Universal (Intel + Apple Silicon) | `.dmg` | [Releases](https://github.com/xacnio/radiocove/releases/latest) |
+| Linux | x64 | `.deb`, `.rpm`, `.AppImage` | [Releases](https://github.com/xacnio/radiocove/releases/latest) |
+| Linux | ARM64 | `.deb`, `.rpm` | [Releases](https://github.com/xacnio/radiocove/releases/latest) |
+
+Windows 7/8 is not supported (no WebView2).
 
 ## Screenshots
 
@@ -70,20 +91,6 @@ Radiocove is a desktop radio player. You can browse stations, add your own strea
 - Discord Rich Presence — show what you're listening to on Discord
 - Backup & restore all data as a single .zip file
 - Built-in auto-updater
-
-## Install
-
-Grab the latest build from [Releases](https://github.com/xacnio/radiocove/releases):
-
-| Platform | Architecture | Formats |
-| :--- | :--- | :--- |
-| Windows (10+) | x64 | `.exe` installer, `.msi` |
-| Windows (10+) | ARM64 | `.exe` installer |
-| macOS (11+) | Universal (Intel + Apple Silicon) | `.dmg` |
-| Linux | x64 | `.deb`, `.rpm`, `.AppImage` |
-| Linux | ARM64 | `.deb`, `.rpm` |
-
-Windows 7/8 is not supported (no WebView2).
 
 ## Build from source
 
