@@ -4,7 +4,7 @@
   <p>Desktop radio client built with Tauri 2 + React</p>
 
   [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-  [![Version](https://img.shields.io/badge/version-1.3.0-blue)](https://github.com/xacnio/radiocove/releases)
+  [![Version](https://img.shields.io/badge/version-1.3.1-blue)](https://github.com/xacnio/radiocove/releases)
   [![Website](https://img.shields.io/badge/website-radiocove-1db954)](https://xacnio.github.io/radiocove/)
 
   [<img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get it from Microsoft Store" width="200"/>](https://apps.microsoft.com/detail/9NKTF92G6XFQ)
