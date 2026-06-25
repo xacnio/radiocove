@@ -1,9 +1,11 @@
 import { useLanguage } from "../lib/LanguageContext.jsx";
+import ScrollToTop from "./ScrollToTop.jsx";
 
 export default function Footer() {
   const { t } = useLanguage();
   return (
     <footer className="max-w-6xl mx-auto px-6 py-10 border-t border-stone-800/80 flex flex-wrap items-center justify-between gap-4 text-sm text-stone-500">
+      <ScrollToTop />
       <span>
         {t("footer.rights")(new Date().getFullYear())}
         <span className="mx-1.5 text-stone-700">·</span>

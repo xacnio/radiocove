@@ -1,4 +1,5 @@
 export default {
+  scrollToTop: "Scroll to top",
   nav: { features: "Features", download: "Download", changelog: "Changelog" },
   header: { download: "Download" },
   hero: {
@@ -7,6 +8,7 @@ export default {
     titleLine2: "50,000+ stations, one fast player.",
     desc: "Radiocove is a desktop radio client that lives in your tray. Browse and import from a database of 50,000+ stations, identify songs as they play with built-in Shazam-style recognition, and tune everything — theme, layout, equalizer — to your taste.",
     downloadFor: (platform) => `Download for ${platform}`,
+    otherArch: "Choose a different architecture",
     otherPlatforms: "Other platforms",
     license: "Free and open source · GPL-3.0 licensed",
   },

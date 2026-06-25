@@ -15,6 +15,23 @@ export function detectPlatform() {
   return "windows";
 }
 
+// Best-effort CPU architecture detection. Only Chromium exposes this
+export async function detectArch() {
+  try {
+    const arch = await navigator?.userAgentData?.getHighEntropyValues?.(["architecture"]);
+    if (arch?.architecture === "arm") return "arm64";
+    if (arch?.architecture === "x86") return "x64";
+  } catch {
+    // userAgentData unsupported — fall through to default.
+  }
+  return null;
+}
+
+// x64/universal first, arm64 last, to avoid mistaken downloads by default.
+export function sortAssetsByArch(assets) {
+  return [...assets].sort((a, b) => (a.arch === "arm64" ? 1 : 0) - (b.arch === "arm64" ? 1 : 0));
+}
+
 export function formatBytes(bytes) {
   if (!bytes) return "";
   const mb = bytes / (1024 * 1024);

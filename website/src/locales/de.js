@@ -1,4 +1,5 @@
 export default {
+  scrollToTop: "Nach oben scrollen",
   nav: { features: "Funktionen", download: "Download", changelog: "Änderungen" },
   header: { download: "Download" },
   hero: {
@@ -7,6 +8,7 @@ export default {
     titleLine2: "50.000+ Sender, ein schneller Player.",
     desc: "Radiocove ist ein Desktop-Radio-Client, der in deiner Taskleiste lebt. Durchsuche und importiere aus einer Datenbank mit über 50.000 Sendern, erkenne Songs während des Abspielens mit integrierter Shazam-ähnlicher Erkennung und passe alles an — Theme, Layout, Equalizer.",
     downloadFor: (platform) => `Für ${platform} herunterladen`,
+    otherArch: "Andere Architektur wählen",
     otherPlatforms: "Andere Plattformen",
     license: "Kostenlos und Open Source · GPL-3.0-Lizenz",
   },

@@ -1,5 +1,5 @@
 import { FiDownload } from "react-icons/fi";
-import { formatBytes, assetExt, MS_STORE_URL, msStoreBadgeUrl } from "../lib/platform.js";
+import { formatBytes, assetExt, sortAssetsByArch, MS_STORE_URL, msStoreBadgeUrl } from "../lib/platform.js";
 import { useLanguage } from "../lib/LanguageContext.jsx";
 
 const PLATFORM_KEYS = ["windows", "macos", "linux"];
@@ -20,10 +20,7 @@ export default function Download({ latestRelease }) {
       <div className="mt-8 grid sm:grid-cols-3 gap-4">
         {PLATFORM_KEYS.map((key) => {
           const p = platforms[key];
-          // x64/universal first, ARM64 last, to avoid mistaken downloads.
-          const assets = downloads
-            .filter((d) => d.platform === key)
-            .sort((a, b) => (a.arch === "arm64" ? 1 : 0) - (b.arch === "arm64" ? 1 : 0));
+          const assets = sortAssetsByArch(downloads.filter((d) => d.platform === key));
           return (
             <div key={key} className="rounded-xl border border-stone-800 bg-stone-900/60 p-5 flex flex-col">
               <h3 className="font-semibold text-stone-100">{p.label}</h3>

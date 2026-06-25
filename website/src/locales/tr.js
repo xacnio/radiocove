@@ -1,4 +1,5 @@
 export default {
+  scrollToTop: "Yukarı kaydır",
   nav: { features: "Özellikler", download: "İndir", changelog: "Güncellemeler" },
   header: { download: "İndir" },
   hero: {
@@ -7,6 +8,7 @@ export default {
     titleLine2: "50.000+ istasyon, tek hızlı oynatıcı.",
     desc: "Radiocove, sistem tepsisinde çalışan bir masaüstü radyo istemcisidir. 50.000+ istasyonluk bir veritabanından keşfedip içe aktarın, yerleşik Shazam tarzı tanıma ile çalan şarkıları tanıyın ve temayı, düzeni, ekolayzırı zevkinize göre ayarlayın.",
     downloadFor: (platform) => `${platform} için indir`,
+    otherArch: "Farklı mimari seç",
     otherPlatforms: "Diğer platformlar",
     license: "Ücretsiz ve açık kaynak · GPL-3.0 lisanslı",
   },
